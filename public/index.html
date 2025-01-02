@@ -285,8 +285,7 @@ function spin() {
                 accumulatedAngle += sliceAngle;
 
                 // 檢查 finalAngle 是否落在該餐廳範圍內
-                if (finalAngle >= accumulatedAngle - sliceAngle && finalAngle < accumulatedAngle) {
-                    drawWheel(totalRotation); // 轉盤按照 totalRotation 繪製
+                if (finalAngle >= accumulatedAngle - sliceAngle && finalAngle < accumulatedAngle) {                    
                     alert(`轉盤停止，選中了：${restaurant.name}`);
                     break;
                 }
