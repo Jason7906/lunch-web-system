@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>餐廳輪盤抽獎</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; }
+        canvas { margin: 20px auto; display: block; }
+        input, button { padding: 10px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>餐廳輪盤抽獎</h1>
+    <div>
+        <input type="text" id="nameInput" placeholder="輸入你的名字">
+        <button onclick="login()">登入</button>
+    </div>
+    <canvas id="wheel" width="400" height="400"></canvas>
+    <button onclick="spin()">Start</button>
+    <div>
+        <h2>投票區</h2>
+        <ul id="restaurantsList"></ul>
+    </div>
+    <script>
+        let restaurants = [];
+        let userId;
+
+        async function fetchRestaurants() {
+            const response = await fetch('http://localhost:3000/restaurants');
+            restaurants = await response.json();
+            drawWheel();
+            updateRestaurantsList();
+        }
+
+        function drawWheel() {
+            const canvas = document.getElementById('wheel');
+            const ctx = canvas.getContext('2d');
+            const totalWeight = restaurants.reduce((sum, r) => sum + r.weight, 0);
+            let startAngle = 0;
+
+            restaurants.forEach(restaurant => {
+                const sliceAngle = (restaurant.weight / totalWeight) * 2 * Math.PI;
+                ctx.beginPath();
+                ctx.moveTo(200, 200);
+                ctx.arc(200, 200, 200, startAngle, startAngle + sliceAngle);
+                ctx.fillStyle = `hsl(${Math.random() * 360}, 70%, 70%)`;
+                ctx.fill();
+                ctx.stroke();
+                startAngle += sliceAngle;
+            });
+        }
+
+        function updateRestaurantsList() {
+            const list = document.getElementById('restaurantsList');
+            list.innerHTML = restaurants.map(r => `
+                <li>
+                    ${r.name} - 權重: ${r.weight}
+                    <button onclick="vote(${r.id})">投票</button>
+                </li>
+            `).join('');
+        }
+
+        async function login() {
+            const name = document.getElementById('nameInput').value;
+            const response = await fetch('http://localhost:3000/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name }),
+            });
+            const data = await response.json();
+            userId = data.id;
+            alert(`登入成功，歡迎 ${data.name}`);
+            fetchRestaurants();
+        }
+
+        async function vote(restaurantId) {
+            const voteWeight = 1; // 每次投票固定 1 權重
+            await fetch('http://localhost:3000/vote', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, restaurantId, voteWeight }),
+            });
+            fetchRestaurants();
+        }
+
+        function spin() {
+            alert('輪盤開始旋轉！結果隨機選擇！');
+        }
+
+        fetchRestaurants();
+    </script>
+</body>
+</html>
