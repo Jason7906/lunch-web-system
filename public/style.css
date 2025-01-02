@@ -27,21 +27,24 @@ body {
     align-items: center;
     justify-content: center;
     position: relative;
+    height: 100%; /* 確保輪盤居中 */
 }
+
 #pointer {
     position: absolute;
     width: 0;
     height: 0;
     border-left: 15px solid transparent;
     border-right: 15px solid transparent;
-    border-bottom: 20px solid red; /* 指向下方 */
-    top: -10px;
+    border-bottom: 20px solid red; /* 指向輪盤頂部 */
+    top: 10px; /* 調整與輪盤的距離 */
     left: 50%;
     transform: translateX(-50%);
     z-index: 10;
 }
 canvas {
     margin: 0 auto;
+    display: block;
 }
 #voteContainer {
     flex: 1;
@@ -58,6 +61,13 @@ canvas {
     justify-content: space-between;
     width: 80%;
     margin: 10px 0;
+}
+.restaurant span {
+    word-break: break-word; /* 啟用文字換行 */
+    max-width: 200px; /* 限制最大寬度 */
+    white-space: normal; /* 允許多行 */
+    text-align: left; /* 名稱靠左對齊 */
+    font-size: 16px; /* 字體大小 */
 }
 .restaurant button {
     padding: 5px 10px;
