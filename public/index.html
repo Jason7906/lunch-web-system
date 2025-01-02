@@ -84,41 +84,41 @@ async function fetchRestaurants() {
     updateDeleteRestaurantSelect(); // 確保刪除選單更新
 }
 
-        function drawWheel(offsetAngle = 0) {
-            const canvas = document.getElementById('wheel');
-            const ctx = canvas.getContext('2d');
-            const totalWeight = restaurants.reduce((sum, r) => sum + r.weight, 0);
-            let startAngle = offsetAngle;
+function drawWheel(offsetAngle = 0) {
+    const canvas = document.getElementById('wheel');
+    const ctx = canvas.getContext('2d');
+    const totalWeight = restaurants.reduce((sum, r) => sum + r.weight, 0);
+    let startAngle = offsetAngle;
 
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            restaurants.forEach(restaurant => {
-                const sliceAngle = (restaurant.weight / totalWeight) * 2 * Math.PI;
+    restaurants.forEach(restaurant => {
+        const sliceAngle = (restaurant.weight / totalWeight) * 2 * Math.PI;
 
-                // 繪製扇形
-                ctx.beginPath();
-                ctx.moveTo(200, 200);
-                ctx.arc(200, 200, 200, startAngle, startAngle + sliceAngle);
-                ctx.fillStyle = colors[restaurant.id];
-                ctx.fill();
-                ctx.stroke();
+        // 繪製扇形
+        ctx.beginPath();
+        ctx.moveTo(200, 200);
+        ctx.arc(200, 200, 200, startAngle, startAngle + sliceAngle);
+        ctx.fillStyle = colors[restaurant.id];
+        ctx.fill();
+        ctx.stroke();
 
-                // 繪製餐廳名稱
-                const textAngle = startAngle + sliceAngle / 2;
-                const textX = 200 + 120 * Math.cos(textAngle);
-                const textY = 200 + 120 * Math.sin(textAngle);
-                ctx.save();
-                ctx.translate(textX, textY);
-                ctx.rotate(textAngle);
-                ctx.textAlign = "center";
-                ctx.fillStyle = "#000";
-                ctx.font = "16px Arial";
-                ctx.fillText(restaurant.name, 0, 0);
-                ctx.restore();
+        // 繪製餐廳名稱
+        const textAngle = startAngle + sliceAngle / 2;
+        const textX = 200 + 120 * Math.cos(textAngle);
+        const textY = 200 + 120 * Math.sin(textAngle);
+        ctx.save();
+        ctx.translate(textX, textY);
+        ctx.rotate(textAngle); // 確保文字旋轉與扇形匹配
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#000";
+        ctx.font = "16px Arial";
+        ctx.fillText(restaurant.name, 0, 0);
+        ctx.restore();
 
-                startAngle += sliceAngle;
-            });
-        }
+        startAngle += sliceAngle;
+    });
+}
 
         function updateRestaurantsList() {
     const list = document.getElementById('restaurantsList');
@@ -272,7 +272,8 @@ function spin() {
             requestAnimationFrame(animateSpin);
         } else {
             // 計算最終停止的角度
-            const finalAngle = (currentAngle + Math.PI) % (2 * Math.PI); // 加上 Math.PI 將 6點鐘方向對齊
+            const canvasOffset = Math.PI / 2; // 假設指針是12點方向（標準）向下移動到6點鐘方向，需要加 π/2
+            const finalAngle = (currentAngle + canvasOffset) % (2 * Math.PI);
 
             // 找出中選的餐廳
             const totalWeight = restaurants.reduce((sum, r) => sum + r.weight, 0);
