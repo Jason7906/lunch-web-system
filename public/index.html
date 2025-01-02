@@ -13,9 +13,19 @@
             flex-direction: column;
             height: 100vh;
         }
-        #main {
+        #login {
             display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
             flex: 1;
+        }
+        #main {
+            display: none;
+            flex: 1;
+        }
+        #main.active {
+            display: flex;
         }
         #wheelContainer {
             flex: 1;
@@ -72,6 +82,14 @@
     </style>
 </head>
 <body>
+    <!-- 登入介面 -->
+    <div id="login">
+        <h1>登入</h1>
+        <input type="text" id="nameInput" placeholder="輸入你的名字">
+        <button onclick="login()">登入</button>
+    </div>
+
+    <!-- 主界面 -->
     <div id="main">
         <!-- 左側轉盤 -->
         <div id="wheelContainer">
@@ -86,6 +104,21 @@
             <div id="restaurantsList"></div>
             <div id="remaining">剩餘權重：<span id="remainingWeight">10</span></div>
             <button onclick="submitVotes()">投票</button>
+
+            <!-- 新增/刪除/命名功能 -->
+            <h3>管理餐廳</h3>
+            <div>
+                <input type="text" id="newRestaurantName" placeholder="新增餐廳名稱">
+                <button onclick="addRestaurant()">新增餐廳</button>
+            </div>
+            <div>
+                <input type="text" id="editRestaurantName" placeholder="新的餐廳名稱">
+                <button onclick="renameRestaurant()">修改名稱</button>
+            </div>
+            <div>
+                <select id="deleteRestaurantSelect"></select>
+                <button onclick="deleteRestaurant()">刪除餐廳</button>
+            </div>
         </div>
     </div>
 
@@ -95,6 +128,12 @@
         let remainingWeight = 10; // 用戶剩餘權重
         let votes = {}; // 用戶投票數據
         const colors = {}; // 固定的餐廳顏色
+
+        // 顯示登入介面或主介面
+        function showSection(sectionId) {
+            document.querySelectorAll("body > div").forEach(div => div.style.display = "none");
+            document.getElementById(sectionId).style.display = "flex";
+        }
 
         async function fetchRestaurants() {
             const response = await fetch('/restaurants');
@@ -106,6 +145,7 @@
             });
             drawWheel();
             updateRestaurantsList();
+            updateDeleteRestaurantSelect();
         }
 
         function drawWheel(offsetAngle = 0) {
@@ -171,6 +211,20 @@
             updateRestaurantsList();
         }
 
+        async function login() {
+            const name = document.getElementById('nameInput').value;
+            const response = await fetch('/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name }),
+            });
+            const data = await response.json();
+            userId = data.id;
+            alert(`登入成功，歡迎 ${data.name}`);
+            showSection("main");
+            fetchRestaurants();
+        }
+
         async function submitVotes() {
             for (const [restaurantId, voteWeight] of Object.entries(votes)) {
                 await fetch('/vote', {
@@ -183,11 +237,84 @@
             fetchRestaurants();
         }
 
-        function spin() {
-            alert('輪盤旋轉功能！');
+        async function addRestaurant() {
+            const name = document.getElementById('newRestaurantName').value;
+            if (!name) {
+                alert('請輸入餐廳名稱');
+                return;
+            }
+            const response = await fetch('/restaurants', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, weight: 10 }),
+            });
+            if (response.ok) {
+                alert('新增餐廳成功');
+                fetchRestaurants();
+            } else {
+                alert('新增餐廳失敗');
+            }
         }
 
-        fetchRestaurants();
+        async function deleteRestaurant() {
+            const select = document.getElementById('deleteRestaurantSelect');
+            const restaurantId = select.value;
+            if (!restaurantId) {
+                alert('請選擇要刪除的餐廳');
+                return;
+            }
+            const response = await fetch(`/restaurants/${restaurantId}`, { method: 'DELETE' });
+            if (response.ok) {
+                alert('餐廳刪除成功');
+                fetchRestaurants();
+            } else {
+                alert('刪除餐廳失敗');
+            }
+        }
+
+        async function renameRestaurant() {
+            const select = document.getElementById('deleteRestaurantSelect');
+            const restaurantId = select.value;
+            const newName = document.getElementById('editRestaurantName').value;
+            if (!restaurantId || !newName) {
+                alert('請選擇餐廳並輸入新名稱');
+                return;
+            }
+            const response = await fetch(`/restaurants/${restaurantId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: newName }),
+            });
+            if (response.ok) {
+                alert('餐廳名稱修改成功');
+                fetchRestaurants();
+            } else {
+                alert('修改餐廳名稱失敗');
+            }
+        }
+
+        function spin() {
+            const canvas = document.getElementById('wheel');
+            const ctx = canvas.getContext('2d');
+            let currentAngle = 0;
+            const spinSpeed = Math.PI / 10; // 每幀旋轉角度
+            const totalSpins = Math.PI * 10; // 總旋轉角度
+            let targetAngle = Math.random() * (2 * Math.PI); // 最終目標角度
+
+            function animateSpin() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                drawWheel(currentAngle);
+                currentAngle += spinSpeed;
+                if (currentAngle < totalSpins + targetAngle) {
+                    requestAnimationFrame(animateSpin);
+                } else {
+                    alert('旋轉完成！');
+                }
+            }
+            animateSpin();
+        }
+
+        showSection("login");
     </script>
 </body>
 </html>

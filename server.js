@@ -61,7 +61,39 @@ app.post('/vote', (req, res) => {
         });
     });
 });
+// 新增餐廳
+app.post('/restaurants', (req, res) => {
+    const { name, weight } = req.body;
+    if (!name || weight === undefined) {
+        return res.status(400).send('請提供餐廳名稱和權重');
+    }
+    db.run("INSERT INTO restaurants (name, weight) VALUES (?, ?)", [name, weight], function (err) {
+        if (err) return res.status(500).send(err.message);
+        res.json({ id: this.lastID, name, weight });
+    });
+});
 
+// 刪除餐廳
+app.delete('/restaurants/:id', (req, res) => {
+    const { id } = req.params;
+    db.run("DELETE FROM restaurants WHERE id = ?", [id], function (err) {
+        if (err) return res.status(500).send(err.message);
+        res.send('餐廳刪除成功');
+    });
+});
+
+// 修改餐廳名稱
+app.put('/restaurants/:id', (req, res) => {
+    const { id } = req.params;
+    const { name } = req.body;
+    if (!name) {
+        return res.status(400).send('請提供新的餐廳名稱');
+    }
+    db.run("UPDATE restaurants SET name = ? WHERE id = ?", [name, id], function (err) {
+        if (err) return res.status(500).send(err.message);
+        res.send('餐廳名稱修改成功');
+    });
+});
 // 啟動伺服器
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
