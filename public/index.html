@@ -4,23 +4,50 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>餐廳輪盤抽獎</title>
-    <link rel="stylesheet" href="/style.css">
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; }
+        #login, #wheelSection { display: none; }
+        #pointer {
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-bottom: 20px solid red;
+            left: 50%;
+            top: 10px;
+            transform: translateX(-50%);
+        }
+        canvas { margin: 20px auto; display: block; }
+        input, button { padding: 10px; margin: 5px; }
+    </style>
 </head>
 <body>
-    <h1>餐廳輪盤抽獎</h1>
-    <div>
+    <div id="login">
+        <h1>登入</h1>
         <input type="text" id="nameInput" placeholder="輸入你的名字">
         <button onclick="login()">登入</button>
     </div>
-    <canvas id="wheel" width="400" height="400"></canvas>
-    <button onclick="spin()">開始旋轉</button>
-    <div>
-        <h2>投票區</h2>
-        <ul id="restaurantsList"></ul>
+
+    <div id="wheelSection">
+        <h1>餐廳輪盤抽獎</h1>
+        <div id="pointer"></div>
+        <canvas id="wheel" width="400" height="400"></canvas>
+        <button onclick="spin()">開始旋轉</button>
+        <div>
+            <h2>投票區</h2>
+            <ul id="restaurantsList"></ul>
+        </div>
     </div>
+
     <script>
         let restaurants = [];
         let userId;
+
+        function showSection(sectionId) {
+            document.querySelectorAll("body > div").forEach(div => div.style.display = "none");
+            document.getElementById(sectionId).style.display = "block";
+        }
 
         async function fetchRestaurants() {
             const response = await fetch('/restaurants');
@@ -29,23 +56,43 @@
             updateRestaurantsList();
         }
 
-        function drawWheel() {
-            const canvas = document.getElementById('wheel');
-            const ctx = canvas.getContext('2d');
-            const totalWeight = restaurants.reduce((sum, r) => sum + r.weight, 0);
-            let startAngle = 0;
+        function drawWheel(offsetAngle = 0) {
+    const canvas = document.getElementById('wheel');
+    const ctx = canvas.getContext('2d');
+    const totalWeight = restaurants.reduce((sum, r) => sum + r.weight, 0);
+    let startAngle = offsetAngle;
 
-            restaurants.forEach(restaurant => {
-                const sliceAngle = (restaurant.weight / totalWeight) * 2 * Math.PI;
-                ctx.beginPath();
-                ctx.moveTo(200, 200);
-                ctx.arc(200, 200, 200, startAngle, startAngle + sliceAngle);
-                ctx.fillStyle = `hsl(${Math.random() * 360}, 70%, 70%)`;
-                ctx.fill();
-                ctx.stroke();
-                startAngle += sliceAngle;
-            });
-        }
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    restaurants.forEach(restaurant => {
+        const sliceAngle = (restaurant.weight / totalWeight) * 2 * Math.PI;
+
+        // 繪製扇形
+        ctx.beginPath();
+        ctx.moveTo(200, 200);
+        ctx.arc(200, 200, 200, startAngle, startAngle + sliceAngle);
+        ctx.fillStyle = `hsl(${Math.random() * 360}, 70%, 70%)`;
+        ctx.fill();
+        ctx.stroke();
+
+        // 計算文字位置
+        const textAngle = startAngle + sliceAngle / 2; // 扇形中間角度
+        const textX = 200 + 120 * Math.cos(textAngle); // 半徑為120的位置
+        const textY = 200 + 120 * Math.sin(textAngle);
+
+        // 繪製餐廳名稱
+        ctx.save();
+        ctx.translate(textX, textY);
+        ctx.rotate(textAngle); // 旋轉文字
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#000";
+        ctx.font = "16px Arial";
+        ctx.fillText(restaurant.name, 0, 0);
+        ctx.restore();
+
+        startAngle += sliceAngle;
+    });
+}
 
         function updateRestaurantsList() {
             const list = document.getElementById('restaurantsList');
@@ -67,6 +114,7 @@
             const data = await response.json();
             userId = data.id;
             alert(`登入成功，歡迎 ${data.name}`);
+            showSection("wheelSection");
             fetchRestaurants();
         }
 
@@ -81,10 +129,38 @@
         }
 
         function spin() {
-            alert('輪盤開始旋轉！結果隨機選擇！');
+            const canvas = document.getElementById('wheel');
+            const ctx = canvas.getContext('2d');
+            const totalWeight = restaurants.reduce((sum, r) => sum + r.weight, 0);
+
+            // 計算選中餐廳
+            const randomWeight = Math.random() * totalWeight;
+            let cumulativeWeight = 0;
+            let selectedRestaurant;
+            for (const restaurant of restaurants) {
+                cumulativeWeight += restaurant.weight;
+                if (randomWeight <= cumulativeWeight) {
+                    selectedRestaurant = restaurant;
+                    break;
+                }
+            }
+
+            // 動畫
+            let angle = 0;
+            const spinAngle = Math.PI * 10 + (randomWeight / totalWeight) * 2 * Math.PI;
+            const spinInterval = setInterval(() => {
+                angle += Math.PI / 20; // 每幀旋轉角度
+                if (angle >= spinAngle) {
+                    clearInterval(spinInterval);
+                    alert(`恭喜選中：${selectedRestaurant.name}`);
+                } else {
+                    drawWheel(angle);
+                }
+            }, 30);
         }
 
-        fetchRestaurants();
+        // 預設顯示登入介面
+        showSection("login");
     </script>
 </body>
 </html>
