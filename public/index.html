@@ -4,82 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>餐廳輪盤抽獎</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-        }
-        #login {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            flex: 1;
-        }
-        #main {
-            display: none;
-            flex: 1;
-        }
-        #main.active {
-            display: flex;
-        }
-        #wheelContainer {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-        }
-        #pointer {
-            position: absolute;
-            width: 0;
-            height: 0;
-            border-left: 15px solid transparent;
-            border-right: 15px solid transparent;
-            border-top: 20px solid red;
-            bottom: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 10;
-        }
-        canvas {
-            margin: 0 auto;
-        }
-        #voteContainer {
-            flex: 1;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
-            align-items: center;
-            border-left: 2px solid #ccc;
-        }
-        .restaurant {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            width: 80%;
-            margin: 10px 0;
-        }
-        .restaurant button {
-            padding: 5px 10px;
-            margin: 0 5px;
-        }
-        #remaining {
-            margin-top: 20px;
-            font-size: 1.2em;
-        }
-        button {
-            padding: 10px 20px;
-            margin-top: 20px;
-            cursor: pointer;
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <!-- 登入介面 -->
@@ -320,37 +245,44 @@ async function deleteRestaurant() {
     }
 }
 
-        function spin() {
+function spin() {
     const canvas = document.getElementById('wheel');
     const ctx = canvas.getContext('2d');
-    let currentAngle = 0;
-    const spinSpeed = Math.PI / 10; // 每幀旋轉角度
-    const totalSpins = Math.PI * 10; // 總旋轉角度
-    const targetAngle = Math.random() * (2 * Math.PI); // 最終目標角度
+    let currentAngle = 0; // 目前旋轉角度
+    const spinSpeed = Math.PI / 10; // 每幀旋轉的角度
+    const extraSpins = Math.floor(Math.random() * 5) + 5; // 隨機多轉幾圈
+    const targetAngle = Math.random() * (2 * Math.PI); // 隨機目標角度
 
     function animateSpin() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         drawWheel(currentAngle);
         currentAngle += spinSpeed;
-        if (currentAngle < totalSpins + targetAngle) {
+
+        if (currentAngle < extraSpins * 2 * Math.PI + targetAngle) {
             requestAnimationFrame(animateSpin);
         } else {
+            // 計算最終停止的角度
+            const finalAngle = (currentAngle + targetAngle) % (2 * Math.PI);
+
+            // 找出中選的餐廳
             const totalWeight = restaurants.reduce((sum, r) => sum + r.weight, 0);
             let accumulatedAngle = 0;
 
-            // 計算轉到的餐廳
-            for (const r of restaurants) {
-                const sliceAngle = (r.weight / totalWeight) * 2 * Math.PI;
+            for (const restaurant of restaurants) {
+                const sliceAngle = (restaurant.weight / totalWeight) * 2 * Math.PI;
                 accumulatedAngle += sliceAngle;
-                if ((currentAngle + targetAngle) % (2 * Math.PI) < accumulatedAngle) {
-                    alert(`轉盤停止，選中了：${r.name}`);
+
+                if (finalAngle <= accumulatedAngle) {
+                    alert(`轉盤停止，選中了：${restaurant.name}`);
                     break;
                 }
             }
         }
     }
+
     animateSpin();
 }
+
 
         showSection("login");
     </script>
