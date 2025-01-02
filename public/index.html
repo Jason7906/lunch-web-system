@@ -112,6 +112,7 @@
                 <button onclick="addRestaurant()">新增餐廳</button>
             </div>
             <div>
+                <select id="renameRestaurantSelect"></select>
                 <input type="text" id="editRestaurantName" placeholder="新的餐廳名稱">
                 <button onclick="renameRestaurant()">修改名稱</button>
             </div>
@@ -134,6 +135,10 @@
             document.querySelectorAll("body > div").forEach(div => div.style.display = "none");
             document.getElementById(sectionId).style.display = "flex";
         }
+        function updateRenameRestaurantSelect() {
+    const select = document.getElementById('renameRestaurantSelect');
+    select.innerHTML = restaurants.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+}
 
         async function fetchRestaurants() {
             const response = await fetch('/restaurants');
@@ -145,6 +150,7 @@
             });
             drawWheel();
             updateRestaurantsList();
+            updateRenameRestaurantSelect();
             updateDeleteRestaurantSelect();
         }
 
@@ -257,20 +263,20 @@
         }
 
         async function deleteRestaurant() {
-            const select = document.getElementById('deleteRestaurantSelect');
-            const restaurantId = select.value;
-            if (!restaurantId) {
-                alert('請選擇要刪除的餐廳');
-                return;
-            }
-            const response = await fetch(`/restaurants/${restaurantId}`, { method: 'DELETE' });
-            if (response.ok) {
-                alert('餐廳刪除成功');
-                fetchRestaurants();
-            } else {
-                alert('刪除餐廳失敗');
-            }
-        }
+    const select = document.getElementById('deleteRestaurantSelect');
+    const restaurantId = select.value;
+    if (!restaurantId) {
+        alert('請選擇要刪除的餐廳');
+        return;
+    }
+    const response = await fetch(`/restaurants/${restaurantId}`, { method: 'DELETE' });
+    if (response.ok) {
+        alert('餐廳刪除成功');
+        fetchRestaurants(); // 確保更新列表
+    } else {
+        alert('刪除餐廳失敗');
+    }
+}
 
         async function renameRestaurant() {
             const select = document.getElementById('deleteRestaurantSelect');
@@ -294,25 +300,36 @@
         }
 
         function spin() {
-            const canvas = document.getElementById('wheel');
-            const ctx = canvas.getContext('2d');
-            let currentAngle = 0;
-            const spinSpeed = Math.PI / 10; // 每幀旋轉角度
-            const totalSpins = Math.PI * 10; // 總旋轉角度
-            let targetAngle = Math.random() * (2 * Math.PI); // 最終目標角度
+    const canvas = document.getElementById('wheel');
+    const ctx = canvas.getContext('2d');
+    let currentAngle = 0;
+    const spinSpeed = Math.PI / 10; // 每幀旋轉角度
+    const totalSpins = Math.PI * 10; // 總旋轉角度
+    const targetAngle = Math.random() * (2 * Math.PI); // 最終目標角度
 
-            function animateSpin() {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                drawWheel(currentAngle);
-                currentAngle += spinSpeed;
-                if (currentAngle < totalSpins + targetAngle) {
-                    requestAnimationFrame(animateSpin);
-                } else {
-                    alert('旋轉完成！');
+    function animateSpin() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawWheel(currentAngle);
+        currentAngle += spinSpeed;
+        if (currentAngle < totalSpins + targetAngle) {
+            requestAnimationFrame(animateSpin);
+        } else {
+            const totalWeight = restaurants.reduce((sum, r) => sum + r.weight, 0);
+            let accumulatedAngle = 0;
+
+            // 計算轉到的餐廳
+            for (const r of restaurants) {
+                const sliceAngle = (r.weight / totalWeight) * 2 * Math.PI;
+                accumulatedAngle += sliceAngle;
+                if ((currentAngle + targetAngle) % (2 * Math.PI) < accumulatedAngle) {
+                    alert(`轉盤停止，選中了：${r.name}`);
+                    break;
                 }
             }
-            animateSpin();
         }
+    }
+    animateSpin();
+}
 
         showSection("login");
     </script>

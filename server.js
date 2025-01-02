@@ -81,7 +81,20 @@ app.delete('/restaurants/:id', (req, res) => {
         res.send('餐廳刪除成功');
     });
 });
-
+// 更新餐廳列表
+function updateRestaurantsList() {
+    const list = document.getElementById('restaurantsList');
+    list.innerHTML = restaurants.map(r => `
+        <div class="restaurant">
+            <span>${r.name} - 權重: ${r.weight}</span>
+            <div>
+                <button onclick="adjustVote(${r.id}, -1)">-</button>
+                <span>${votes[r.id] || 0}</span>
+                <button onclick="adjustVote(${r.id}, 1)">+</button>
+            </div>
+        </div>
+    `).join('');
+}
 // 修改餐廳名稱
 app.put('/restaurants/:id', (req, res) => {
     const { id } = req.params;
