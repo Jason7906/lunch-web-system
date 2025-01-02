@@ -20,7 +20,7 @@
         <div id="wheelContainer">
             <div id="pointer"></div> <!-- 箭头 -->
             <canvas id="wheel" width="400" height="400"></canvas> <!-- 圆盘 -->
-            <button onclick="spin()">开始旋转</button>
+            <button onclick="spin()">開始旋轉</button>
         </div>
 
         <!-- 右側投票區 -->
@@ -265,7 +265,7 @@ function spin() {
             requestAnimationFrame(animateSpin);
         } else {
             // 計算最終停止的角度
-            const finalAngle = (currentAngle + targetAngle) % (2 * Math.PI);
+            const finalAngle = currentAngle % (2 * Math.PI); // 修正最終角度
 
             // 找出中選的餐廳
             const totalWeight = restaurants.reduce((sum, r) => sum + r.weight, 0);
@@ -275,7 +275,8 @@ function spin() {
                 const sliceAngle = (restaurant.weight / totalWeight) * 2 * Math.PI;
                 accumulatedAngle += sliceAngle;
 
-                if (finalAngle <= accumulatedAngle) {
+                // 檢查 finalAngle 是否落在該區域
+                if (finalAngle >= accumulatedAngle - sliceAngle && finalAngle < accumulatedAngle) {
                     alert(`轉盤停止，選中了：${restaurant.name}`);
                     break;
                 }
