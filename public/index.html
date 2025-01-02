@@ -140,19 +140,24 @@
     select.innerHTML = restaurants.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
 }
 
-        async function fetchRestaurants() {
-            const response = await fetch('/restaurants');
-            restaurants = await response.json();
-            restaurants.forEach((r, index) => {
-                if (!colors[r.id]) {
-                    colors[r.id] = `hsl(${index * 60}, 70%, 70%)`;
-                }
-            });
-            drawWheel();
-            updateRestaurantsList();
-            updateRenameRestaurantSelect();
-            updateDeleteRestaurantSelect();
+function updateDeleteRestaurantSelect() {
+    const select = document.getElementById('deleteRestaurantSelect');
+    select.innerHTML = restaurants.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+}
+
+async function fetchRestaurants() {
+    const response = await fetch('/restaurants');
+    restaurants = await response.json();
+    restaurants.forEach((r, index) => {
+        if (!colors[r.id]) {
+            colors[r.id] = `hsl(${index * 60}, 70%, 70%)`;
         }
+    });
+    drawWheel();
+    updateRestaurantsList();
+    updateRenameRestaurantSelect(); // 確保修改選單更新
+    updateDeleteRestaurantSelect(); // 確保刪除選單更新
+}
 
         function drawWheel(offsetAngle = 0) {
             const canvas = document.getElementById('wheel');
@@ -278,26 +283,42 @@
     }
 }
 
-        async function renameRestaurant() {
-            const select = document.getElementById('deleteRestaurantSelect');
-            const restaurantId = select.value;
-            const newName = document.getElementById('editRestaurantName').value;
-            if (!restaurantId || !newName) {
-                alert('請選擇餐廳並輸入新名稱');
-                return;
-            }
-            const response = await fetch(`/restaurants/${restaurantId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: newName }),
-            });
-            if (response.ok) {
-                alert('餐廳名稱修改成功');
-                fetchRestaurants();
-            } else {
-                alert('修改餐廳名稱失敗');
-            }
-        }
+async function renameRestaurant() {
+    const select = document.getElementById('renameRestaurantSelect'); // 選擇正確的選單
+    const restaurantId = select.value;
+    const newName = document.getElementById('editRestaurantName').value;
+    if (!restaurantId || !newName) {
+        alert('請選擇餐廳並輸入新名稱');
+        return;
+    }
+    const response = await fetch(`/restaurants/${restaurantId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newName }),
+    });
+    if (response.ok) {
+        alert('餐廳名稱修改成功');
+        fetchRestaurants();
+    } else {
+        alert('修改餐廳名稱失敗');
+    }
+}
+
+async function deleteRestaurant() {
+    const select = document.getElementById('deleteRestaurantSelect');
+    const restaurantId = select.value;
+    if (!restaurantId) {
+        alert('請選擇要刪除的餐廳');
+        return;
+    }
+    const response = await fetch(`/restaurants/${restaurantId}`, { method: 'DELETE' });
+    if (response.ok) {
+        alert('餐廳刪除成功');
+        fetchRestaurants();
+    } else {
+        alert('刪除餐廳失敗');
+    }
+}
 
         function spin() {
     const canvas = document.getElementById('wheel');

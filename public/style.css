@@ -1,17 +1,45 @@
 body {
     font-family: Arial, sans-serif;
     text-align: center;
+    margin: 0; /* 去除頁面默認的邊距 */
+    background-color: #f8f8f8; /* 添加背景色 */
 }
+
 canvas {
     margin: 20px auto;
     display: block;
+    max-width: 90%; /* 限制最大寬度，適配小屏幕 */
 }
+
 input, button {
     padding: 10px;
     margin: 5px;
 }
+
 .restaurant span {
     word-break: break-word; /* 長名稱換行 */
     max-width: 200px; /* 限制最大寬度 */
     display: block;
+}
+
+#wheelContainer {
+    position: relative;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+#pointer {
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-left: 15px solid transparent;
+    border-right: 15px solid transparent;
+    border-bottom: 20px solid red; /* 指向上方 */
+    top: -20px; /* 箭頭位置調整到轉盤的正上方 */
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
 }
