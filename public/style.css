@@ -29,6 +29,7 @@ body {
     justify-content: center;
     position: relative; /* 必须设置为相对定位 */
     height: 400px; /* 确保容器高度与画布一致 */
+    margin-top: 50px; /* 额外增加上边距 */
 }
 
 #pointer {
@@ -38,7 +39,7 @@ body {
     border-left: 15px solid transparent;
     border-right: 15px solid transparent;
     border-bottom: 20px solid red; /* 指向下方 */
-    top: 50%; /* 动态设置，居中指向轮盘 */
+    top: calc(50% + 20px); /* 在垂直居中的基础上再向下移动 20px */
     transform: translate(-50%, -100%); /* 左右居中，同时向上偏移 */
     left: 50%;
     z-index: 10;
