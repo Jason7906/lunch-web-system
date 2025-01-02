@@ -18,9 +18,9 @@
     <div id="main">
         <!-- 左側轉盤 -->
         <div id="wheelContainer">
-            <canvas id="wheel" width="400" height="400"></canvas>
-            <div id="pointer"></div>
-            <button onclick="spin()">開始旋轉</button>
+            <div id="pointer"></div> <!-- 箭头 -->
+            <canvas id="wheel" width="400" height="400"></canvas> <!-- 圆盘 -->
+            <button onclick="spin()">开始旋转</button>
         </div>
 
         <!-- 右側投票區 -->
@@ -170,6 +170,9 @@ async function fetchRestaurants() {
                 });
             }
             alert('投票成功！');
+             // 重置投票數據和剩餘權重
+            votes = {}; // 清空所有餐廳的投票數
+            document.getElementById('remainingWeight').textContent = remainingWeight; // 更新界面上的剩餘權重
             fetchRestaurants();
         }
 

@@ -26,24 +26,24 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    position: relative;
-    height: 100%; /* 確保輪盤居中 */
+    position: relative; /* 必须设置为相对定位 */
+    height: 400px; /* 确保容器高度与画布一致 */
 }
 
 #pointer {
     position: absolute;
     width: 0;
     height: 0;
-    border-left: 15px solid transparent;
-    border-right: 15px solid transparent;
-    border-bottom: 20px solid red; /* 指向輪盤頂部 */
-    top: 10px; /* 調整與輪盤的距離 */
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 10;
+    border-left: 15px solid transparent; /* 左侧透明 */
+    border-right: 15px solid transparent; /* 右侧透明 */
+    border-bottom: 20px solid red; /* 指向下方的红色箭头 */
+    top: -20px; /* 调整箭头到圆盘顶部，稍微抬高 */
+    left: 50%; /* 水平居中 */
+    transform: translateX(-50%); /* 确保箭头正对圆心 */
+    z-index: 10; /* 保证箭头在圆盘上方 */
 }
 canvas {
-    margin: 0 auto;
+    margin: 0 auto; /* 确保水平居中 */
     display: block;
 }
 #voteContainer {
@@ -59,7 +59,7 @@ canvas {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    width: 80%;
+    width: 90%; /* 增加容器寬度 */
     margin: 10px 0;
 }
 .restaurant span {
@@ -68,10 +68,22 @@ canvas {
     white-space: normal; /* 允許多行 */
     text-align: left; /* 名稱靠左對齊 */
     font-size: 16px; /* 字體大小 */
+    max-width: 100%;        /* 讓文字容器使用父級最大寬度 */
 }
 .restaurant button {
-    padding: 5px 10px;
-    margin: 0 5px;
+    padding: 5px;               /* 内边距，控制按钮内文字位置 */
+    margin: 0 5px;              /* 按钮之间的间距 */
+    width: 30px;                /* 固定宽度，统一按钮大小 */
+    height: 30px;               /* 固定高度，统一按钮大小 */
+    text-align: center;         /* 文字居中对齐 */
+    font-size: 16px;            /* 统一文字大小 */
+    line-height: 30px;          /* 让文字在按钮中垂直居中 */
+    box-sizing: border-box;     /* 确保宽高包括边框和内边距 */
+}
+.restaurant div {
+    display: flex;
+    align-items: center; /* 垂直居中 */
+    gap: 5px;            /* 按钮之间的间距 */
 }
 #remaining {
     margin-top: 20px;
