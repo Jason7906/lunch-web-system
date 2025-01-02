@@ -124,7 +124,7 @@ function drawWheel(offsetAngle = 0) {
     const list = document.getElementById('restaurantsList');
     list.innerHTML = restaurants.map(r => `
         <div class="restaurant">
-            <span>${r.name}（權重：${r.weight}）</span> 
+            <span>${r.name}（${r.weight}）</span> 
             <div>
                 <button onclick="adjustVote(${r.id}, -1)">-</button>
                 <span>${votes[r.id] || 0}</span>
@@ -287,7 +287,7 @@ function spin() {
                 // 檢查 finalAngle 是否落在該餐廳範圍內
                 if (finalAngle >= accumulatedAngle - sliceAngle && finalAngle < accumulatedAngle) {
                     drawWheel(totalRotation); // 轉盤按照 totalRotation 繪製
-                    alert(`轉盤停止，選中了：${restaurant.name}`);
+                    //alert(`轉盤停止，選中了：${restaurant.name}`);
                     break;
                 }
             }
