@@ -5,162 +5,189 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>餐廳輪盤抽獎</title>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; }
-        #login, #wheelSection { display: none; }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        #main {
+            display: flex;
+            flex: 1;
+        }
+        #wheelContainer {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
         #pointer {
             position: absolute;
             width: 0;
             height: 0;
             border-left: 15px solid transparent;
             border-right: 15px solid transparent;
-            border-bottom: 20px solid red;
+            border-top: 20px solid red;
+            bottom: 10px;
             left: 50%;
-            top: 10px;
             transform: translateX(-50%);
+            z-index: 10;
         }
-        canvas { margin: 20px auto; display: block; }
-        input, button { padding: 10px; margin: 5px; }
+        canvas {
+            margin: 0 auto;
+        }
+        #voteContainer {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            border-left: 2px solid #ccc;
+        }
+        .restaurant {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 80%;
+            margin: 10px 0;
+        }
+        .restaurant button {
+            padding: 5px 10px;
+            margin: 0 5px;
+        }
+        #remaining {
+            margin-top: 20px;
+            font-size: 1.2em;
+        }
+        button {
+            padding: 10px 20px;
+            margin-top: 20px;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
-    <div id="login">
-        <h1>登入</h1>
-        <input type="text" id="nameInput" placeholder="輸入你的名字">
-        <button onclick="login()">登入</button>
-    </div>
+    <div id="main">
+        <!-- 左側轉盤 -->
+        <div id="wheelContainer">
+            <canvas id="wheel" width="400" height="400"></canvas>
+            <div id="pointer"></div>
+            <button onclick="spin()">開始旋轉</button>
+        </div>
 
-    <div id="wheelSection">
-        <h1>餐廳輪盤抽獎</h1>
-        <div id="pointer"></div>
-        <canvas id="wheel" width="400" height="400"></canvas>
-        <button onclick="spin()">開始旋轉</button>
-        <div>
+        <!-- 右側投票區 -->
+        <div id="voteContainer">
             <h2>投票區</h2>
-            <ul id="restaurantsList"></ul>
+            <div id="restaurantsList"></div>
+            <div id="remaining">剩餘權重：<span id="remainingWeight">10</span></div>
+            <button onclick="submitVotes()">投票</button>
         </div>
     </div>
 
     <script>
         let restaurants = [];
         let userId;
-
-        function showSection(sectionId) {
-            document.querySelectorAll("body > div").forEach(div => div.style.display = "none");
-            document.getElementById(sectionId).style.display = "block";
-        }
+        let remainingWeight = 10; // 用戶剩餘權重
+        let votes = {}; // 用戶投票數據
+        const colors = {}; // 固定的餐廳顏色
 
         async function fetchRestaurants() {
             const response = await fetch('/restaurants');
             restaurants = await response.json();
+            restaurants.forEach((r, index) => {
+                if (!colors[r.id]) {
+                    colors[r.id] = `hsl(${index * 60}, 70%, 70%)`;
+                }
+            });
             drawWheel();
             updateRestaurantsList();
         }
 
         function drawWheel(offsetAngle = 0) {
-    const canvas = document.getElementById('wheel');
-    const ctx = canvas.getContext('2d');
-    const totalWeight = restaurants.reduce((sum, r) => sum + r.weight, 0);
-    let startAngle = offsetAngle;
+            const canvas = document.getElementById('wheel');
+            const ctx = canvas.getContext('2d');
+            const totalWeight = restaurants.reduce((sum, r) => sum + r.weight, 0);
+            let startAngle = offsetAngle;
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    restaurants.forEach(restaurant => {
-        const sliceAngle = (restaurant.weight / totalWeight) * 2 * Math.PI;
+            restaurants.forEach(restaurant => {
+                const sliceAngle = (restaurant.weight / totalWeight) * 2 * Math.PI;
 
-        // 繪製扇形
-        ctx.beginPath();
-        ctx.moveTo(200, 200);
-        ctx.arc(200, 200, 200, startAngle, startAngle + sliceAngle);
-        ctx.fillStyle = `hsl(${Math.random() * 360}, 70%, 70%)`;
-        ctx.fill();
-        ctx.stroke();
+                // 繪製扇形
+                ctx.beginPath();
+                ctx.moveTo(200, 200);
+                ctx.arc(200, 200, 200, startAngle, startAngle + sliceAngle);
+                ctx.fillStyle = colors[restaurant.id];
+                ctx.fill();
+                ctx.stroke();
 
-        // 計算文字位置
-        const textAngle = startAngle + sliceAngle / 2; // 扇形中間角度
-        const textX = 200 + 120 * Math.cos(textAngle); // 半徑為120的位置
-        const textY = 200 + 120 * Math.sin(textAngle);
+                // 繪製餐廳名稱
+                const textAngle = startAngle + sliceAngle / 2;
+                const textX = 200 + 120 * Math.cos(textAngle);
+                const textY = 200 + 120 * Math.sin(textAngle);
+                ctx.save();
+                ctx.translate(textX, textY);
+                ctx.rotate(textAngle);
+                ctx.textAlign = "center";
+                ctx.fillStyle = "#000";
+                ctx.font = "16px Arial";
+                ctx.fillText(restaurant.name, 0, 0);
+                ctx.restore();
 
-        // 繪製餐廳名稱
-        ctx.save();
-        ctx.translate(textX, textY);
-        ctx.rotate(textAngle); // 旋轉文字
-        ctx.textAlign = "center";
-        ctx.fillStyle = "#000";
-        ctx.font = "16px Arial";
-        ctx.fillText(restaurant.name, 0, 0);
-        ctx.restore();
-
-        startAngle += sliceAngle;
-    });
-}
+                startAngle += sliceAngle;
+            });
+        }
 
         function updateRestaurantsList() {
             const list = document.getElementById('restaurantsList');
             list.innerHTML = restaurants.map(r => `
-                <li>
-                    ${r.name} - 權重: ${r.weight}
-                    <button onclick="vote(${r.id})">投票</button>
-                </li>
+                <div class="restaurant">
+                    <span>${r.name}</span>
+                    <div>
+                        <button onclick="adjustVote(${r.id}, -1)">-</button>
+                        <span>${votes[r.id] || 0}</span>
+                        <button onclick="adjustVote(${r.id}, 1)">+</button>
+                    </div>
+                </div>
             `).join('');
         }
 
-        async function login() {
-            const name = document.getElementById('nameInput').value;
-            const response = await fetch('/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name }),
-            });
-            const data = await response.json();
-            userId = data.id;
-            alert(`登入成功，歡迎 ${data.name}`);
-            showSection("wheelSection");
-            fetchRestaurants();
+        function adjustVote(restaurantId, delta) {
+            if (!votes[restaurantId]) votes[restaurantId] = 0;
+            if (delta === -1 && votes[restaurantId] > 0) {
+                votes[restaurantId] -= 1;
+                remainingWeight += 1;
+            } else if (delta === 1 && remainingWeight > 0) {
+                votes[restaurantId] += 1;
+                remainingWeight -= 1;
+            }
+            document.getElementById('remainingWeight').textContent = remainingWeight;
+            updateRestaurantsList();
         }
 
-        async function vote(restaurantId) {
-            const voteWeight = 1; // 每次投票固定 1 權重
-            await fetch('/vote', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, restaurantId, voteWeight }),
-            });
+        async function submitVotes() {
+            for (const [restaurantId, voteWeight] of Object.entries(votes)) {
+                await fetch('/vote', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId, restaurantId, voteWeight }),
+                });
+            }
+            alert('投票成功！');
             fetchRestaurants();
         }
 
         function spin() {
-            const canvas = document.getElementById('wheel');
-            const ctx = canvas.getContext('2d');
-            const totalWeight = restaurants.reduce((sum, r) => sum + r.weight, 0);
-
-            // 計算選中餐廳
-            const randomWeight = Math.random() * totalWeight;
-            let cumulativeWeight = 0;
-            let selectedRestaurant;
-            for (const restaurant of restaurants) {
-                cumulativeWeight += restaurant.weight;
-                if (randomWeight <= cumulativeWeight) {
-                    selectedRestaurant = restaurant;
-                    break;
-                }
-            }
-
-            // 動畫
-            let angle = 0;
-            const spinAngle = Math.PI * 10 + (randomWeight / totalWeight) * 2 * Math.PI;
-            const spinInterval = setInterval(() => {
-                angle += Math.PI / 20; // 每幀旋轉角度
-                if (angle >= spinAngle) {
-                    clearInterval(spinInterval);
-                    alert(`恭喜選中：${selectedRestaurant.name}`);
-                } else {
-                    drawWheel(angle);
-                }
-            }, 30);
+            alert('輪盤旋轉功能！');
         }
 
-        // 預設顯示登入介面
-        showSection("login");
+        fetchRestaurants();
     </script>
 </body>
 </html>
