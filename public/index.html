@@ -258,7 +258,7 @@ async function deleteRestaurant() {
 function spin() {
     const canvas = document.getElementById('wheel');
     const ctx = canvas.getContext('2d');
-    let totalRotation = 0; // 旋轉的總角度
+    let totalRotation = 180; // 旋轉的總角度
     const spinSpeed = Math.PI / 10; // 每幀旋轉的角度
     const extraSpins = Math.floor(Math.random() * 5) + 5; // 隨機多轉幾圈
     const targetAngle = Math.random() * (2 * Math.PI); // 隨機目標角度
@@ -286,8 +286,8 @@ function spin() {
 
                 // 檢查 finalAngle 是否落在該餐廳範圍內
                 if (finalAngle >= accumulatedAngle - sliceAngle && finalAngle < accumulatedAngle) {
+                    drawWheel(totalRotation); // 轉盤按照 totalRotation 繪製
                     alert(`轉盤停止，選中了：${restaurant.name}`);
-                    console.log('Selected Restaurant:', restaurant.name);
                     break;
                 }
             }

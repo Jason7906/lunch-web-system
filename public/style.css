@@ -41,7 +41,7 @@ body {
     border-top: 20px solid red; /* 改為指向上方 */
     top: 100%; /* 定位到輪盤容器的底部 */
     left: 50%;
-    transform: translate(-50%, 20px); /* 向下偏移 20px */
+    transform: translate(-50%, 20px) rotate(180deg); /* 向下偏移並旋轉 180 度 */
     z-index: 10;
 }
 canvas {
