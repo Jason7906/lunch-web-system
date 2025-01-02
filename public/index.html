@@ -258,22 +258,23 @@ async function deleteRestaurant() {
 function spin() {
     const canvas = document.getElementById('wheel');
     const ctx = canvas.getContext('2d');
-    let currentAngle = 0; // 目前旋轉角度
+    let totalRotation = 0; // 旋轉的總角度
     const spinSpeed = Math.PI / 10; // 每幀旋轉的角度
     const extraSpins = Math.floor(Math.random() * 5) + 5; // 隨機多轉幾圈
     const targetAngle = Math.random() * (2 * Math.PI); // 隨機目標角度
+    const maxRotation = extraSpins * 2 * Math.PI + targetAngle; // 最終旋轉總角度
 
     function animateSpin() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        drawWheel(currentAngle);
-        currentAngle += spinSpeed;
+        drawWheel(totalRotation); // 轉盤按照 totalRotation 繪製
+        totalRotation += spinSpeed;
 
-        if (currentAngle < extraSpins * 2 * Math.PI + targetAngle) {
+        if (totalRotation < maxRotation) {
             requestAnimationFrame(animateSpin);
         } else {
-            // 計算最終停止的角度
-            const canvasOffset = Math.PI / 2; // 假設指針是12點方向（標準）向下移動到6點鐘方向，需要加 π/2
-            const finalAngle = (currentAngle + canvasOffset) % (2 * Math.PI);
+            // 計算最終的角度
+            const finalAngle = maxRotation % (2 * Math.PI); // 確保角度在 0 到 2π
+            console.log('Final Angle (rad):', finalAngle);
 
             // 找出中選的餐廳
             const totalWeight = restaurants.reduce((sum, r) => sum + r.weight, 0);
@@ -283,9 +284,10 @@ function spin() {
                 const sliceAngle = (restaurant.weight / totalWeight) * 2 * Math.PI;
                 accumulatedAngle += sliceAngle;
 
-                // 檢查 finalAngle 是否落在該區域
+                // 檢查 finalAngle 是否落在該餐廳範圍內
                 if (finalAngle >= accumulatedAngle - sliceAngle && finalAngle < accumulatedAngle) {
                     alert(`轉盤停止，選中了：${restaurant.name}`);
+                    console.log('Selected Restaurant:', restaurant.name);
                     break;
                 }
             }

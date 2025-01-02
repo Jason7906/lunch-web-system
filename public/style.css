@@ -38,10 +38,10 @@ body {
     height: 0;
     border-left: 15px solid transparent;
     border-right: 15px solid transparent;
-    border-bottom: 20px solid red; /* 指向下方 */
-    top: 0; /* 固定到輪盤頂部 */
+    border-top: 20px solid red; /* 改為指向上方 */
+    top: 100%; /* 定位到輪盤容器的底部 */
     left: 50%;
-    transform: translateX(-50%);
+    transform: translate(-50%, 20px); /* 向下偏移 20px */
     z-index: 10;
 }
 canvas {
