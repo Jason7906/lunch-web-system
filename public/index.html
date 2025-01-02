@@ -272,7 +272,7 @@ function spin() {
             requestAnimationFrame(animateSpin);
         } else {
             // 計算最終停止的角度
-            const finalAngle = currentAngle % (2 * Math.PI); // 修正最終角度
+            const finalAngle = (currentAngle + Math.PI) % (2 * Math.PI); // 加上 Math.PI 將 6點鐘方向對齊
 
             // 找出中選的餐廳
             const totalWeight = restaurants.reduce((sum, r) => sum + r.weight, 0);
