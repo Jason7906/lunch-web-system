@@ -51,7 +51,7 @@
     <script>
         let restaurants = [];
         let userId;
-        let remainingWeight = 10; // 用戶剩餘權重
+        let remainingWeight = null; // 用戶剩餘權重
         let votes = {}; // 用戶投票數據
         const colors = {}; // 固定的餐廳顏色
 
@@ -146,20 +146,27 @@ async function fetchRestaurants() {
             document.getElementById('remainingWeight').textContent = remainingWeight;
             updateRestaurantsList();
         }
-
-        async function login() {
-            const name = document.getElementById('nameInput').value;
-            const response = await fetch('/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name }),
-            });
+        async function fetchUserWeight() {
+            const response = await fetch(`/users/${userId}/weight`);
             const data = await response.json();
-            userId = data.id;
-            alert(`登入成功，歡迎 ${data.name}`);
-            showSection("main");
-            fetchRestaurants();
+            remainingWeight = data.weight; // 更新用戶剩餘權重
+            document.getElementById('remainingWeight').textContent = remainingWeight; // 更新顯示
         }
+
+async function login() {
+    const name = document.getElementById('nameInput').value;
+    const response = await fetch('/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+    });
+    const data = await response.json();
+    userId = data.id;
+    alert(`登入成功，歡迎 ${data.name}`);
+    await fetchUserWeight(); // 獲取並更新用戶的剩餘權重
+    showSection("main");
+    fetchRestaurants();
+}
 
         async function submitVotes() {
             for (const [restaurantId, voteWeight] of Object.entries(votes)) {

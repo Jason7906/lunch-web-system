@@ -1,24 +1,53 @@
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
-const db = new sqlite3.Database(':memory:'); // 使用內存資料庫
+// 資料庫檔案路徑
+const DB_FILE = path.join(__dirname, 'data', 'database.db');
+
+// 確保資料夾存在
+if (!fs.existsSync(path.dirname(DB_FILE))) {
+    fs.mkdirSync(path.dirname(DB_FILE), { recursive: true });
+}
+
+// 使用檔案型資料庫
+const db = new sqlite3.Database(DB_FILE);
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // 初始化資料庫
 db.serialize(() => {
-    db.run("CREATE TABLE restaurants (id INTEGER PRIMARY KEY, name TEXT, weight INTEGER)");
-    db.run("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, weight INTEGER)");
+    db.run(
+        `CREATE TABLE IF NOT EXISTS restaurants (
+            id INTEGER PRIMARY KEY, 
+            name TEXT, 
+            weight INTEGER
+        )`
+    );
 
-    // 預設餐廳資料
-    const restaurants = ['餐廳A', '餐廳B', '餐廳C', '餐廳D'];
-    const stmt = db.prepare("INSERT INTO restaurants (name, weight) VALUES (?, 10)");
-    restaurants.forEach(name => stmt.run(name));
-    stmt.finalize();
+    db.run(
+        `CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY, 
+            name TEXT, 
+            weight INTEGER
+        )`
+    );
+
+    // 檢查是否已有資料，若無則初始化
+    db.get("SELECT COUNT(*) AS count FROM restaurants", (err, row) => {
+        if (err) throw err;
+        if (row.count === 0) {
+            const restaurants = ['餐廳A', '餐廳B', '餐廳C', '餐廳D'];
+            const stmt = db.prepare("INSERT INTO restaurants (name, weight) VALUES (?, 10)");
+            restaurants.forEach(name => stmt.run(name));
+            stmt.finalize();
+        }
+    });
 });
+
 
 // 取得餐廳列表
 app.get('/restaurants', (req, res) => {
@@ -44,7 +73,15 @@ app.post('/login', (req, res) => {
         }
     });
 });
-
+// 取得使用者剩餘權重
+app.get('/users/:id/weight', (req, res) => {
+    const { id } = req.params;
+    db.get("SELECT weight FROM users WHERE id = ?", [id], (err, row) => {
+        if (err) return res.status(500).send(err.message);
+        if (!row) return res.status(404).send('用戶不存在');
+        res.json({ weight: row.weight });
+    });
+});
 // 投票功能
 app.post('/vote', (req, res) => {
     const { userId, restaurantId, voteWeight } = req.body;
