@@ -28,6 +28,13 @@ db.serialize(() => {
             in_pool INTEGER DEFAULT 0
         )`
     );
+    db.run(
+        `CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY, 
+            name TEXT UNIQUE, 
+            weight INTEGER
+        )`
+    );
 
     // 初始化範例餐廳
     db.get("SELECT COUNT(*) AS count FROM restaurants", (err, row) => {
@@ -87,13 +94,18 @@ app.get('/restaurants', (req, res) => {
 app.post('/login', (req, res) => {
     const { name } = req.body;
     db.get("SELECT * FROM users WHERE name = ?", [name], (err, user) => {
-        if (err) return res.status(500).send(err.message);
-
+        if (err) {
+            console.error("資料庫查詢錯誤:", err);
+            return res.status(500).send(err.message);
+        }
         if (user) {
             res.json(user);
         } else {
             db.run("INSERT INTO users (name, weight) VALUES (?, 10)", [name], function(err) {
-                if (err) return res.status(500).send(err.message);
+                if (err) {
+                    console.error("插入用戶失敗:", err);
+                    return res.status(500).send(err.message);
+                }
                 res.json({ id: this.lastID, name, weight: 10 });
             });
         }
