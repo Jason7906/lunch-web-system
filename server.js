@@ -41,7 +41,7 @@ db.serialize(() => {
         if (err) throw err;
         if (row.count === 0) {
             const restaurants = ['八方雲集', 'Costco', '麥當勞', '冰店', '早餐店', '阿忠', 'Subway', '水餃店', '牛肉麵', '鵝肉拉麵', '黃悶雞', '擔擔麵'];
-            const stmt = db.prepare("INSERT INTO restaurants (name, weight, in_pool) VALUES (?, 10, 0)");
+            const stmt = db.prepare("INSERT INTO restaurants (name, weight, in_pool) VALUES (?, 10, 1)");
             restaurants.forEach(name => stmt.run(name));
             stmt.finalize();
         }
@@ -109,14 +109,7 @@ app.post('/login', (req, res) => {
             console.error("資料庫查詢錯誤:", err);
             return res.status(500).send(err.message);
         }
-        if (user) {
-            // 如果用戶存在但權重為 NULL，初始化權重
-            if (user.weight === null) {
-                db.run("UPDATE users SET weight = 10 WHERE id = ?", [user.id], (err) => {
-                    if (err) console.error("權重初始化失敗:", err);
-                });
-                user.weight = 10;
-            }
+        if (user) {   
             res.json(user);
         } else {
             // 新增用戶並初始化權重
