@@ -33,14 +33,16 @@ body {
 }
 
 #pointer {
-    width: 20px;
-    height: 20px;
-    background-color: red;
+    width: 0;
+    height: 0;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-bottom: 20px solid red;
     position: absolute;
-    top: -10px;
-    left: 190px;
+    top: -10px; /* 調整到圓的上緣 */
+    left: 190px; /* 居中對齊 */
+    transform: translateX(-50%);
     z-index: 10;
-    clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
 }
 
 canvas {
@@ -121,7 +123,20 @@ select {
     font-weight: bold;
     margin: 10px 0;
 }
-
+.status-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+.status-in-pool {
+    background-color: #28a745; /* 綠色 */
+}
+.status-not-in-pool {
+    background-color: #6c757d; /* 灰色 */
+}
 /* 響應式設計 */
 @media (max-width: 768px) {
     button {

@@ -89,16 +89,19 @@ function initializeColors() {
 
         // 更新所有餐廳清單，支持加入或移出 Pool
         function updateAllRestaurantsList() {
-            const list = document.getElementById('allRestaurantsList');
-            list.innerHTML = restaurants.map(r => `
-                <div class="restaurant">
-                    <span>${r.name} (${r.in_pool ? '在 Pool' : '不在 Pool'})</span>
-                    <button onclick="togglePool(${r.id}, ${r.in_pool})">
-                        ${r.in_pool ? '移出 Pool' : '加入 Pool'}
-                    </button>
-                </div>
-            `).join('');
-        }
+    const list = document.getElementById('allRestaurantsList');
+    list.innerHTML = restaurants.map(r => `
+        <div class="restaurant">
+            <span>
+                <span class="status-indicator ${r.in_pool ? 'status-in-pool' : 'status-not-in-pool'}"></span>
+                ${r.name}
+            </span>
+            <button onclick="togglePool(${r.id}, ${r.in_pool})">
+                ${r.in_pool ? '移出 Pool' : '加入 Pool'}
+            </button>
+        </div>
+    `).join('');
+}
 
         // 切換 Pool 狀態
         async function togglePool(restaurantId, inPool) {
@@ -109,7 +112,7 @@ function initializeColors() {
             });
 
             if (response.ok) {
-                alert(`餐廳 ${inPool ? '移出' : '加入'} Pool 成功`);
+                //alert(`餐廳 ${inPool ? '移出' : '加入'} Pool 成功`);
                 fetchRestaurants();
             } else {
                 alert('操作失敗');
@@ -149,7 +152,7 @@ function initializeColors() {
             body: JSON.stringify({ userId, restaurantId, voteWeight }),
         });
     }
-    alert('投票成功！');
+    //alert('投票成功！');
     votes = {}; // 清空投票數據
     await fetchRestaurants(); // 獲取最新數據
 }
@@ -195,7 +198,7 @@ function finalizeSelection(finalAngle) {
         accumulatedAngle += sliceAngle;
 
         if (finalAngle >= accumulatedAngle - sliceAngle && finalAngle < accumulatedAngle) {
-            alert(`轉盤停止，選中了：${restaurant.name}`);
+            //alert(`轉盤停止，選中了：${restaurant.name}`);
             highlightSelectedRestaurant(restaurant.id);
             break;
         }
