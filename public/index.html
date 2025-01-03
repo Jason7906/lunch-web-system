@@ -51,7 +51,14 @@
             document.querySelectorAll("body > div").forEach(div => div.style.display = "none");
             document.getElementById(sectionId).style.display = "flex";
         }
-
+        // 初始化餐廳顏色
+function initializeColors() {
+    poolRestaurants.forEach(restaurant => {
+        if (!colors[restaurant.id]) {
+            colors[restaurant.id] = `hsl(${Math.random() * 360}, 70%, 70%)`;
+        }
+    });
+}
         // 獲取餐廳列表並更新清單
         async function fetchRestaurants() {
             const response = await fetch('/restaurants');
@@ -59,7 +66,7 @@
 
             poolRestaurants = restaurants.filter(r => r.in_pool === 1);
             outsidePoolRestaurants = restaurants.filter(r => r.in_pool === 0);
-
+            initializeColors(); // 初始化顏色
             drawWheel();
             updateRestaurantsList();
             updateAllRestaurantsList();
@@ -149,46 +156,51 @@
 
         // 旋轉轉盤
         function spin() {
+    if (poolRestaurants.length === 0) {
+        alert('目前 Pool 中沒有餐廳，無法旋轉！');
+        return;
+    }
 
-            if (poolRestaurants.length === 0) {
-                alert('目前 Pool 中沒有餐廳，無法旋轉！');
-                return;
-            }
-            const canvas = document.getElementById('wheel');
-            const ctx = canvas.getContext('2d');
-            let totalRotation = 0;
-            const spinSpeed = Math.PI / 10;
-            const extraSpins = Math.floor(Math.random() * 5) + 5;
-            const targetAngle = Math.random() * (2 * Math.PI);
-            const maxRotation = extraSpins * 2 * Math.PI + targetAngle;
+    const canvas = document.getElementById('wheel');
+    const ctx = canvas.getContext('2d');
+    let totalRotation = 0;
+    const spinSpeed = Math.PI / 10; // 旋轉速度
+    const extraSpins = Math.floor(Math.random() * 5) + 5; // 額外旋轉圈數
+    const targetAngle = Math.random() * (2 * Math.PI); // 目標角度
+    const maxRotation = extraSpins * 2 * Math.PI + targetAngle; // 最終旋轉總角度
 
-            function animateSpin() {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                drawWheel(totalRotation);
-                totalRotation += spinSpeed;
+    function animateSpin() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-                if (totalRotation < maxRotation) {
-                    requestAnimationFrame(animateSpin);
-                } else {
-                    const finalAngle = maxRotation % (2 * Math.PI);
-                    const totalWeight = poolRestaurants.reduce((sum, r) => sum + r.weight, 0);
-                    let accumulatedAngle = 0;
-
-                    for (const restaurant of poolRestaurants) {
-                        const sliceAngle = (restaurant.weight / totalWeight) * 2 * Math.PI;
-                        accumulatedAngle += sliceAngle;
-
-                        if (finalAngle >= accumulatedAngle - sliceAngle && finalAngle < accumulatedAngle) {
-                            alert(`轉盤停止，選中了：${restaurant.name}`);
-                            highlightSelectedRestaurant(restaurant.id);
-                            break;
-                        }
-                    }
-                }
-            }
-
-            animateSpin();
+        if (totalRotation >= maxRotation) {
+            drawWheel(maxRotation); // 固定到最終角度
+            finalizeSelection(maxRotation % (2 * Math.PI));
+            return; // 停止動畫
         }
+
+        totalRotation += spinSpeed;
+        drawWheel(totalRotation);
+        requestAnimationFrame(animateSpin);
+    }
+
+    animateSpin();
+}
+
+function finalizeSelection(finalAngle) {
+    const totalWeight = poolRestaurants.reduce((sum, r) => sum + r.weight, 0);
+    let accumulatedAngle = 0;
+
+    for (const restaurant of poolRestaurants) {
+        const sliceAngle = (restaurant.weight / totalWeight) * 2 * Math.PI;
+        accumulatedAngle += sliceAngle;
+
+        if (finalAngle >= accumulatedAngle - sliceAngle && finalAngle < accumulatedAngle) {
+            alert(`轉盤停止，選中了：${restaurant.name}`);
+            highlightSelectedRestaurant(restaurant.id);
+            break;
+        }
+    }
+}
         function highlightSelectedRestaurant(id) {
     const listItems = document.querySelectorAll('#restaurantsList .restaurant');
     listItems.forEach(item => {
@@ -197,38 +209,38 @@
 }
         // 繪製轉盤
         function drawWheel(offsetAngle = 0) {
-            const canvas = document.getElementById('wheel');
-            const ctx = canvas.getContext('2d');
-            const totalWeight = poolRestaurants.reduce((sum, r) => sum + r.weight, 0);
-            let startAngle = offsetAngle;
+    const canvas = document.getElementById('wheel');
+    const ctx = canvas.getContext('2d');
+    const totalWeight = poolRestaurants.reduce((sum, r) => sum + r.weight, 0);
+    let startAngle = -offsetAngle; // 改為逆時針方向
 
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            poolRestaurants.forEach(restaurant => {
-                const sliceAngle = (restaurant.weight / totalWeight) * 2 * Math.PI;
+    poolRestaurants.forEach(restaurant => {
+        const sliceAngle = (restaurant.weight / totalWeight) * 2 * Math.PI;
 
-                ctx.beginPath();
-                ctx.moveTo(200, 200);
-                ctx.arc(200, 200, 200, startAngle, startAngle + sliceAngle);
-                ctx.fillStyle = colors[restaurant.id] || `hsl(${Math.random() * 360}, 70%, 70%)`;
-                ctx.fill();
-                ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(200, 200);
+        ctx.arc(200, 200, 200, startAngle, startAngle - sliceAngle, true); // 改為逆時針繪製
+        ctx.fillStyle = colors[restaurant.id];
+        ctx.fill();
+        ctx.stroke();
 
-                const textAngle = startAngle + sliceAngle / 2;
-                const textX = 200 + 120 * Math.cos(textAngle);
-                const textY = 200 + 120 * Math.sin(textAngle);
-                ctx.save();
-                ctx.translate(textX, textY);
-                ctx.rotate(textAngle);
-                ctx.textAlign = "center";
-                ctx.fillStyle = "#000";
-                ctx.font = "16px Arial";
-                ctx.fillText(restaurant.name, 0, 0);
-                ctx.restore();
+        const textAngle = startAngle - sliceAngle / 2; // 文字角度同步更新
+        const textX = 200 + 120 * Math.cos(textAngle);
+        const textY = 200 + 120 * Math.sin(textAngle);
+        ctx.save();
+        ctx.translate(textX, textY);
+        ctx.rotate(textAngle);
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#000";
+        ctx.font = "16px Arial";
+        ctx.fillText(restaurant.name, 0, 0);
+        ctx.restore();
 
-                startAngle += sliceAngle;
-            });
-        }
+        startAngle -= sliceAngle; // 逆時針更新起始角度
+    });
+}
 
         // 使用者登入
         async function login() {
