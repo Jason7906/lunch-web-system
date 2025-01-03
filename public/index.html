@@ -261,7 +261,7 @@ function finalizeSelection(finalAngle) {
     const data = await response.json();
 
     // 檢查返回數據是否正確
-    if (!data.id || !data.weight) {
+    if (!data.id ) {
         alert('登入失敗，無法取得用戶數據');
         return;
     }
