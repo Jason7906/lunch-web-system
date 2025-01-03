@@ -8,14 +8,14 @@
 </head>
 <body>
     <!-- 登入介面 -->
-    <div id="login">
+    <div id="login" style="display: flex;">
         <h1>登入</h1>
         <input type="text" id="nameInput" placeholder="輸入你的名字">
         <button onclick="login()">登入</button>
     </div>
 
     <!-- 主界面 -->
-    <div id="main">
+    <div id="main" style="display: none;">
         <!-- 左側轉盤 -->
         <div id="wheelContainer">
             <div id="pointer"></div> <!-- 箭头 -->
@@ -232,21 +232,38 @@
 
         // 使用者登入
         async function login() {
-            const name = document.getElementById('nameInput').value;
-            const response = await fetch('/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name }),
-            });
-            const data = await response.json();
-            userId = data.id;
-            remainingWeight = data.weight;
-            document.getElementById('remainingWeight').textContent = remainingWeight;
-            showSection("main");
-            fetchRestaurants();
-        }
+    const name = document.getElementById('nameInput').value;
 
-        showSection("login");
+    // 發送請求
+    const response = await fetch('/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+    });
+
+    // 檢查是否成功
+    if (!response.ok) {
+        alert('登入失敗，請重試');
+        return;
+    }
+
+    const data = await response.json();
+
+    // 檢查返回數據是否正確
+    if (!data.id || !data.weight) {
+        alert('登入失敗，無法取得用戶數據');
+        return;
+    }
+
+    // 更新用戶資料
+    userId = data.id;
+    remainingWeight = data.weight;
+
+    // 更新畫面
+    document.getElementById('remainingWeight').textContent = remainingWeight;
+    showSection("main");
+    fetchRestaurants();
+}
     </script>
 </body>
 </html>
