@@ -23,280 +23,228 @@
             <button onclick="spin()">開始旋轉</button>
         </div>
 
-        <!-- 右側投票區 -->
-        <div id="voteContainer">
-            <h2>投票區</h2>
+        <!-- 右側管理區 -->
+        <div id="managementContainer">
+            <!-- Pool 清單 -->
+            <h2>Pool 內餐廳</h2>
             <div id="restaurantsList"></div>
             <div id="remaining">剩餘權重：<span id="remainingWeight">10</span></div>
             <button onclick="submitVotes()">投票</button>
 
-            <!-- 新增/刪除/命名功能 -->
-            <h3>管理餐廳</h3>
-            <div>
-                <input type="text" id="newRestaurantName" placeholder="新增餐廳名稱">
-                <button onclick="addRestaurant()">新增餐廳</button>
-            </div>
-            <div>
-                <select id="renameRestaurantSelect"></select>
-                <input type="text" id="editRestaurantName" placeholder="新的餐廳名稱">
-                <button onclick="renameRestaurant()">修改名稱</button>
-            </div>
-            <div>
-                <select id="deleteRestaurantSelect"></select>
-                <button onclick="deleteRestaurant()">刪除餐廳</button>
-            </div>
+            <!-- 餐廳清單與 Pool 管理 -->
+            <h2>所有餐廳</h2>
+            <div id="allRestaurantsList"></div>
         </div>
     </div>
 
     <script>
-        let restaurants = [];
-        let userId;
-        let remainingWeight = null; // 用戶剩餘權重
-        let votes = {}; // 用戶投票數據
-        const colors = {}; // 固定的餐廳顏色
+       let restaurants = [];
+        let poolRestaurants = [];
+        let outsidePoolRestaurants = [];
+        let votes = {}; // 投票記錄
+        let userId = null;
+        let remainingWeight = 10; // 初始權重
+        const colors = {};
 
-        // 顯示登入介面或主介面
+        // 顯示登入或主頁面
         function showSection(sectionId) {
             document.querySelectorAll("body > div").forEach(div => div.style.display = "none");
             document.getElementById(sectionId).style.display = "flex";
         }
-        function updateRenameRestaurantSelect() {
-    const select = document.getElementById('renameRestaurantSelect');
-    select.innerHTML = restaurants.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
-}
 
-function updateDeleteRestaurantSelect() {
-    const select = document.getElementById('deleteRestaurantSelect');
-    select.innerHTML = restaurants.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
-}
+        // 獲取餐廳列表並更新清單
+        async function fetchRestaurants() {
+            const response = await fetch('/restaurants');
+            restaurants = await response.json();
 
-async function fetchRestaurants() {
-    const response = await fetch('/restaurants');
-    restaurants = await response.json();
-    restaurants.forEach((r, index) => {
-        if (!colors[r.id]) {
-            colors[r.id] = `hsl(${index * 60}, 70%, 70%)`;
-        }
-    });
-    drawWheel();
-    updateRestaurantsList();
-    updateRenameRestaurantSelect(); // 確保修改選單更新
-    updateDeleteRestaurantSelect(); // 確保刪除選單更新
-}
+            poolRestaurants = restaurants.filter(r => r.in_pool === 1);
+            outsidePoolRestaurants = restaurants.filter(r => r.in_pool === 0);
 
-function drawWheel(offsetAngle = 0) {
-    const canvas = document.getElementById('wheel');
-    const ctx = canvas.getContext('2d');
-    const totalWeight = restaurants.reduce((sum, r) => sum + r.weight, 0);
-    let startAngle = offsetAngle;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    restaurants.forEach(restaurant => {
-        const sliceAngle = (restaurant.weight / totalWeight) * 2 * Math.PI;
-
-        // 繪製扇形
-        ctx.beginPath();
-        ctx.moveTo(200, 200);
-        ctx.arc(200, 200, 200, startAngle, startAngle + sliceAngle);
-        ctx.fillStyle = colors[restaurant.id];
-        ctx.fill();
-        ctx.stroke();
-
-        // 繪製餐廳名稱
-        const textAngle = startAngle + sliceAngle / 2;
-        const textX = 200 + 120 * Math.cos(textAngle);
-        const textY = 200 + 120 * Math.sin(textAngle);
-        ctx.save();
-        ctx.translate(textX, textY);
-        ctx.rotate(textAngle); // 確保文字旋轉與扇形匹配
-        ctx.textAlign = "center";
-        ctx.fillStyle = "#000";
-        ctx.font = "16px Arial";
-        ctx.fillText(restaurant.name, 0, 0);
-        ctx.restore();
-
-        startAngle += sliceAngle;
-    });
-}
-
-        function updateRestaurantsList() {
-    const list = document.getElementById('restaurantsList');
-    list.innerHTML = restaurants.map(r => `
-        <div class="restaurant">
-            <span>${r.name}（${r.weight}）</span> 
-            <div>
-                <button onclick="adjustVote(${r.id}, -1)">-</button>
-                <span>${votes[r.id] || 0}</span>
-                <button onclick="adjustVote(${r.id}, 1)">+</button>
-            </div>
-        </div>
-    `).join('');
-}
-
-        function adjustVote(restaurantId, delta) {
-            if (!votes[restaurantId]) votes[restaurantId] = 0;
-            if (delta === -1 && votes[restaurantId] > 0) {
-                votes[restaurantId] -= 1;
-                remainingWeight += 1;
-            } else if (delta === 1 && remainingWeight > 0) {
-                votes[restaurantId] += 1;
-                remainingWeight -= 1;
-            }
-            document.getElementById('remainingWeight').textContent = remainingWeight;
+            drawWheel();
             updateRestaurantsList();
-        }
-        async function fetchUserWeight() {
-            const response = await fetch(`/users/${userId}/weight`);
-            const data = await response.json();
-            remainingWeight = data.weight; // 更新用戶剩餘權重
-            document.getElementById('remainingWeight').textContent = remainingWeight; // 更新顯示
+            updateAllRestaurantsList();
         }
 
-async function login() {
-    const name = document.getElementById('nameInput').value;
-    const response = await fetch('/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name }),
-    });
-    const data = await response.json();
-    userId = data.id;
-    alert(`登入成功，歡迎 ${data.name}`);
-    await fetchUserWeight(); // 獲取並更新用戶的剩餘權重
-    showSection("main");
-    fetchRestaurants();
-}
-
-        async function submitVotes() {
-            for (const [restaurantId, voteWeight] of Object.entries(votes)) {
-                await fetch('/vote', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId, restaurantId, voteWeight }),
-                });
-            }
-            alert('投票成功！');
-             // 重置投票數據和剩餘權重
-            votes = {}; // 清空所有餐廳的投票數
-            document.getElementById('remainingWeight').textContent = remainingWeight; // 更新界面上的剩餘權重
-            fetchRestaurants();
+        // 更新 Pool 內清單
+        function updateRestaurantsList() {
+            const list = document.getElementById('restaurantsList');
+            list.innerHTML = poolRestaurants.map(r => `
+                <div class="restaurant">
+                    <span>${r.name}（${r.weight}）</span>
+                    <div>
+                        <button onclick="adjustVote(${r.id}, -1)">-</button>
+                        <span>${votes[r.id] || 0}</span>
+                        <button onclick="adjustVote(${r.id}, 1)">+</button>
+                    </div>
+                </div>
+            `).join('');
         }
 
-        async function addRestaurant() {
-            const name = document.getElementById('newRestaurantName').value;
-            if (!name) {
-                alert('請輸入餐廳名稱');
-                return;
-            }
-            const response = await fetch('/restaurants', {
-                method: 'POST',
+        // 更新所有餐廳清單，支持加入或移出 Pool
+        function updateAllRestaurantsList() {
+            const list = document.getElementById('allRestaurantsList');
+            list.innerHTML = restaurants.map(r => `
+                <div class="restaurant">
+                    <span>${r.name} (${r.in_pool ? '在 Pool' : '不在 Pool'})</span>
+                    <button onclick="togglePool(${r.id}, ${r.in_pool})">
+                        ${r.in_pool ? '移出 Pool' : '加入 Pool'}
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        // 切換 Pool 狀態
+        async function togglePool(restaurantId, inPool) {
+            const response = await fetch(`/restaurants/${restaurantId}/pool`, {
+                method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, weight: 10 }),
+                body: JSON.stringify({ in_pool: inPool ? 0 : 1 }),
             });
+
             if (response.ok) {
-                alert('新增餐廳成功');
+                alert(`餐廳 ${inPool ? '移出' : '加入'} Pool 成功`);
                 fetchRestaurants();
             } else {
-                alert('新增餐廳失敗');
+                alert('操作失敗');
             }
         }
 
-        async function deleteRestaurant() {
-    const select = document.getElementById('deleteRestaurantSelect');
-    const restaurantId = select.value;
-    if (!restaurantId) {
-        alert('請選擇要刪除的餐廳');
-        return;
-    }
-    const response = await fetch(`/restaurants/${restaurantId}`, { method: 'DELETE' });
-    if (response.ok) {
-        alert('餐廳刪除成功');
-        fetchRestaurants(); // 確保更新列表
-    } else {
-        alert('刪除餐廳失敗');
-    }
-}
+        // 投票功能
+        async function adjustVote(restaurantId, delta) {
+    if (!votes[restaurantId]) votes[restaurantId] = 0;
 
-async function renameRestaurant() {
-    const select = document.getElementById('renameRestaurantSelect'); // 選擇正確的選單
-    const restaurantId = select.value;
-    const newName = document.getElementById('editRestaurantName').value;
-    if (!restaurantId || !newName) {
-        alert('請選擇餐廳並輸入新名稱');
-        return;
+    if (delta === -1 && votes[restaurantId] > 0) {
+        votes[restaurantId] -= 1;
+        remainingWeight += 1;
+    } else if (delta === 1 && remainingWeight > 0) {
+        votes[restaurantId] += 1;
+        remainingWeight -= 1;
     }
-    const response = await fetch(`/restaurants/${restaurantId}`, {
-        method: 'PUT',
+
+    document.getElementById('remainingWeight').textContent = remainingWeight;
+
+    // 更新後端權重
+    await fetch(`/vote`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newName }),
+        body: JSON.stringify({ userId, restaurantId, voteWeight: votes[restaurantId] }),
     });
-    if (response.ok) {
-        alert('餐廳名稱修改成功');
-        fetchRestaurants();
-    } else {
-        alert('修改餐廳名稱失敗');
-    }
+
+    updateRestaurantsList();
 }
 
-async function deleteRestaurant() {
-    const select = document.getElementById('deleteRestaurantSelect');
-    const restaurantId = select.value;
-    if (!restaurantId) {
-        alert('請選擇要刪除的餐廳');
-        return;
+        // 提交投票
+        async function submitVotes() {
+    for (const [restaurantId, voteWeight] of Object.entries(votes)) {
+        await fetch('/vote', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, restaurantId, voteWeight }),
+        });
     }
-    const response = await fetch(`/restaurants/${restaurantId}`, { method: 'DELETE' });
-    if (response.ok) {
-        alert('餐廳刪除成功');
-        fetchRestaurants();
-    } else {
-        alert('刪除餐廳失敗');
-    }
+    alert('投票成功！');
+    votes = {}; // 清空投票數據
+    await fetchRestaurants(); // 獲取最新數據
 }
 
-function spin() {
-    const canvas = document.getElementById('wheel');
-    const ctx = canvas.getContext('2d');
-    let totalRotation = 0; // 旋轉的總角度
-    const spinSpeed = Math.PI / 10; // 每幀旋轉的角度
-    const extraSpins = Math.floor(Math.random() * 5) + 5; // 隨機多轉幾圈
-    const targetAngle = Math.random() * (2 * Math.PI); // 隨機目標角度
-    const maxRotation = extraSpins * 2 * Math.PI + targetAngle; // 最終旋轉總角度
+        // 旋轉轉盤
+        function spin() {
 
-    function animateSpin() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        drawWheel(totalRotation); // 轉盤按照 totalRotation 繪製
-        totalRotation += spinSpeed;
+            if (poolRestaurants.length === 0) {
+                alert('目前 Pool 中沒有餐廳，無法旋轉！');
+                return;
+            }
+            const canvas = document.getElementById('wheel');
+            const ctx = canvas.getContext('2d');
+            let totalRotation = 0;
+            const spinSpeed = Math.PI / 10;
+            const extraSpins = Math.floor(Math.random() * 5) + 5;
+            const targetAngle = Math.random() * (2 * Math.PI);
+            const maxRotation = extraSpins * 2 * Math.PI + targetAngle;
 
-        if (totalRotation < maxRotation) {
-            requestAnimationFrame(animateSpin);
-        } else {
-            // 計算最終的角度
-            const finalAngle = maxRotation % (2 * Math.PI); // 確保角度在 0 到 2π
-            console.log('Final Angle (rad):', finalAngle);
+            function animateSpin() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                drawWheel(totalRotation);
+                totalRotation += spinSpeed;
 
-            // 找出中選的餐廳
-            const totalWeight = restaurants.reduce((sum, r) => sum + r.weight, 0);
-            let accumulatedAngle = 0;
+                if (totalRotation < maxRotation) {
+                    requestAnimationFrame(animateSpin);
+                } else {
+                    const finalAngle = maxRotation % (2 * Math.PI);
+                    const totalWeight = poolRestaurants.reduce((sum, r) => sum + r.weight, 0);
+                    let accumulatedAngle = 0;
 
-            for (const restaurant of restaurants) {
-                const sliceAngle = (restaurant.weight / totalWeight) * 2 * Math.PI;
-                accumulatedAngle += sliceAngle;
+                    for (const restaurant of poolRestaurants) {
+                        const sliceAngle = (restaurant.weight / totalWeight) * 2 * Math.PI;
+                        accumulatedAngle += sliceAngle;
 
-                // 檢查 finalAngle 是否落在該餐廳範圍內
-                if (finalAngle >= accumulatedAngle - sliceAngle && finalAngle < accumulatedAngle) {
-                    drawWheel(totalRotation); // 轉盤按照 totalRotation 繪製
-                    //alert(`轉盤停止，選中了：${restaurant.name}`);
-                    break;
+                        if (finalAngle >= accumulatedAngle - sliceAngle && finalAngle < accumulatedAngle) {
+                            alert(`轉盤停止，選中了：${restaurant.name}`);
+                            highlightSelectedRestaurant(restaurant.id);
+                            break;
+                        }
+                    }
                 }
             }
+
+            animateSpin();
         }
-    }
-
-    animateSpin();
+        function highlightSelectedRestaurant(id) {
+    const listItems = document.querySelectorAll('#restaurantsList .restaurant');
+    listItems.forEach(item => {
+        item.style.backgroundColor = item.dataset.id == id ? '#ffeaa7' : '';
+    });
 }
+        // 繪製轉盤
+        function drawWheel(offsetAngle = 0) {
+            const canvas = document.getElementById('wheel');
+            const ctx = canvas.getContext('2d');
+            const totalWeight = poolRestaurants.reduce((sum, r) => sum + r.weight, 0);
+            let startAngle = offsetAngle;
 
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            poolRestaurants.forEach(restaurant => {
+                const sliceAngle = (restaurant.weight / totalWeight) * 2 * Math.PI;
+
+                ctx.beginPath();
+                ctx.moveTo(200, 200);
+                ctx.arc(200, 200, 200, startAngle, startAngle + sliceAngle);
+                ctx.fillStyle = colors[restaurant.id] || `hsl(${Math.random() * 360}, 70%, 70%)`;
+                ctx.fill();
+                ctx.stroke();
+
+                const textAngle = startAngle + sliceAngle / 2;
+                const textX = 200 + 120 * Math.cos(textAngle);
+                const textY = 200 + 120 * Math.sin(textAngle);
+                ctx.save();
+                ctx.translate(textX, textY);
+                ctx.rotate(textAngle);
+                ctx.textAlign = "center";
+                ctx.fillStyle = "#000";
+                ctx.font = "16px Arial";
+                ctx.fillText(restaurant.name, 0, 0);
+                ctx.restore();
+
+                startAngle += sliceAngle;
+            });
+        }
+
+        // 使用者登入
+        async function login() {
+            const name = document.getElementById('nameInput').value;
+            const response = await fetch('/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name }),
+            });
+            const data = await response.json();
+            userId = data.id;
+            remainingWeight = data.weight;
+            document.getElementById('remainingWeight').textContent = remainingWeight;
+            showSection("main");
+            fetchRestaurants();
+        }
 
         showSection("login");
     </script>
