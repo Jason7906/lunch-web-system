@@ -93,15 +93,34 @@ app.get('/restaurants', (req, res) => {
 // 使用者登入
 app.post('/login', (req, res) => {
     const { name } = req.body;
+    // 限制僅允許指定名稱登入
+    const allowedNames = ['Jason','Edwin','Mark','William','Eric','Landy']; // 允許登入的名稱列表
+    const isAllowed = allowedNames.some(
+        allowedName => allowedName.toLowerCase() === name.toLowerCase()
+    );
+
+    if (!isAllowed) {
+        return res.status(403).send('您無權登入此系統');
+    }
+
+
     db.get("SELECT * FROM users WHERE name = ?", [name], (err, user) => {
         if (err) {
             console.error("資料庫查詢錯誤:", err);
             return res.status(500).send(err.message);
         }
         if (user) {
+            // 如果用戶存在但權重為 NULL，初始化權重
+            if (user.weight === null) {
+                db.run("UPDATE users SET weight = 10 WHERE id = ?", [user.id], (err) => {
+                    if (err) console.error("權重初始化失敗:", err);
+                });
+                user.weight = 10;
+            }
             res.json(user);
         } else {
-            db.run("INSERT INTO users (name, weight) VALUES (?, 10)", [name], function(err) {
+            // 新增用戶並初始化權重
+            db.run("INSERT INTO users (name, weight) VALUES (?, 10)", [name], function (err) {
                 if (err) {
                     console.error("插入用戶失敗:", err);
                     return res.status(500).send(err.message);
@@ -124,15 +143,21 @@ app.get('/users/:id/weight', (req, res) => {
 app.post('/vote', (req, res) => {
     const { userId, restaurantId, voteWeight } = req.body;
 
-    db.get("SELECT in_pool FROM restaurants WHERE id = ?", [restaurantId], (err, restaurant) => {
+    db.get("SELECT weight FROM users WHERE id = ?", [userId], (err, user) => {
         if (err) return res.status(500).send(err.message);
-        if (!restaurant || restaurant.in_pool === 0) {
-            return res.status(400).send('該餐廳未在轉盤池中');
+
+        // 如果用戶權重為 0，禁止投票
+        if (!user || user.weight <= 0) {
+            return res.status(400).send('權重已耗盡，無法投票');
         }
 
-        db.get("SELECT weight FROM users WHERE id = ?", [userId], (err, user) => {
+        db.get("SELECT in_pool FROM restaurants WHERE id = ?", [restaurantId], (err, restaurant) => {
             if (err) return res.status(500).send(err.message);
-            if (!user || user.weight < voteWeight) {
+            if (!restaurant || restaurant.in_pool === 0) {
+                return res.status(400).send('該餐廳未在轉盤池中');
+            }
+
+            if (user.weight < voteWeight) {
                 return res.status(400).send('權重不足');
             }
 

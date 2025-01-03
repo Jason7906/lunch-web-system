@@ -77,7 +77,8 @@ canvas {
     margin: 5px 0;
     background-color: #fff;
     border-radius: 4px;
-    transition: background-color 0.3s;
+    cursor: pointer;
+    transition: background-color 0.3s;    
 }
 
 .restaurant:hover {

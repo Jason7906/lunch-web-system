@@ -74,50 +74,46 @@ function initializeColors() {
 
         // 更新 Pool 內清單
         function updateRestaurantsList() {
-            const list = document.getElementById('restaurantsList');
-            list.innerHTML = poolRestaurants.map(r => `
-                <div class="restaurant">
-                    <span>${r.name}（${r.weight}）</span>
-                    <div>
-                        <button onclick="adjustVote(${r.id}, -1)">-</button>
-                        <span>${votes[r.id] || 0}</span>
-                        <button onclick="adjustVote(${r.id}, 1)">+</button>
-                    </div>
-                </div>
-            `).join('');
-        }
+    const list = document.getElementById('restaurantsList');
+    list.innerHTML = poolRestaurants.map(r => `
+        <div class="restaurant">
+            <span>${r.name}（${r.weight}）</span>
+            <div>
+                <button onclick="adjustVote(${r.id}, -1)" ${remainingWeight <= 0 ? 'disabled' : ''}>-</button>
+                <span>${votes[r.id] || 0}</span>
+                <button onclick="adjustVote(${r.id}, 1)" ${remainingWeight <= 0 ? 'disabled' : ''}>+</button>
+            </div>
+        </div>
+    `).join('');
+}
 
         // 更新所有餐廳清單，支持加入或移出 Pool
         function updateAllRestaurantsList() {
     const list = document.getElementById('allRestaurantsList');
     list.innerHTML = restaurants.map(r => `
-        <div class="restaurant">
+        <div class="restaurant" onclick="togglePool(${r.id}, ${r.in_pool})">
             <span>
                 <span class="status-indicator ${r.in_pool ? 'status-in-pool' : 'status-not-in-pool'}"></span>
                 ${r.name}
             </span>
-            <button onclick="togglePool(${r.id}, ${r.in_pool})">
-                ${r.in_pool ? '移出 Pool' : '加入 Pool'}
-            </button>
         </div>
     `).join('');
 }
 
         // 切換 Pool 狀態
         async function togglePool(restaurantId, inPool) {
-            const response = await fetch(`/restaurants/${restaurantId}/pool`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ in_pool: inPool ? 0 : 1 }),
-            });
+    const response = await fetch(`/restaurants/${restaurantId}/pool`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ in_pool: inPool ? 0 : 1 }),
+    });
 
-            if (response.ok) {
-                //alert(`餐廳 ${inPool ? '移出' : '加入'} Pool 成功`);
-                fetchRestaurants();
-            } else {
-                alert('操作失敗');
-            }
-        }
+    if (response.ok) {
+        fetchRestaurants();
+    } else {
+        alert('操作失敗');
+    }
+}
 
         // 投票功能
         async function adjustVote(restaurantId, delta) {
@@ -274,11 +270,27 @@ function finalizeSelection(finalAngle) {
     userId = data.id;
     remainingWeight = data.weight;
 
+
+
+
     // 更新畫面
     document.getElementById('remainingWeight').textContent = remainingWeight;
     showSection("main");
     fetchRestaurants();
 }
+const socket = new WebSocket(`ws://${location.host}`);
+let debounceTimer;
+function debounceFetchRestaurants() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(fetchRestaurants, 300);
+}
+// 當後端通知刷新時執行
+socket.addEventListener('message', event => {
+    if (event.data === 'refresh') {
+        fetchRestaurants(); // 刷新餐廳列表和轉盤
+    }
+});
+
     </script>
 </body>
 </html>
