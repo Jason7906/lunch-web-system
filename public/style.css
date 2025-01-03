@@ -41,7 +41,7 @@ body {
     position: absolute;
     top: -10px; /* 調整到圓的上緣 */
     left: 190px; /* 居中對齊 */
-    transform: translateX(-50%);
+    transform: translateX(-50%) rotate(180deg); /* 添加旋轉180度 */
     z-index: 10;
 }
 
