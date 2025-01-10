@@ -40,9 +40,30 @@ db.serialize(() => {
     db.get("SELECT COUNT(*) AS count FROM restaurants", (err, row) => {
         if (err) throw err;
         if (row.count === 0) {
-            const restaurants = ['八方雲集', 'Costco', '麥當勞', '冰店', '早餐店', '阿忠', 'Subway', '水餃店', '牛肉麵', '鵝肉拉麵', '黃悶雞', '擔擔麵'];
-            const stmt = db.prepare("INSERT INTO restaurants (name, weight, in_pool) VALUES (?, 10, 1)");
-            restaurants.forEach(name => stmt.run(name));
+            const restaurants = [
+                { name: '八方雲集', weight: 10, in_pool: 1 },
+                { name: 'Costco', weight: 10, in_pool: 1 },
+                { name: '麥當勞', weight: 10, in_pool: 1 },
+                { name: '冰店', weight: 10, in_pool: 1 },
+                { name: '早餐店', weight: 10, in_pool: 1 },
+                { name: '阿忠', weight: 10, in_pool: 1 },
+                { name: 'Subway', weight: 10, in_pool: 1 },
+                { name: '水餃店', weight: 10, in_pool: 1 },
+                { name: '牛肉麵', weight: 10, in_pool: 1 },
+                { name: '鵝肉拉麵', weight: 10, in_pool: 1 },
+                { name: '黃悶雞', weight: 10, in_pool: 1 },
+                { name: '擔擔麵', weight: 10, in_pool: 1 },
+                { name: '築間火鍋', weight: 1, in_pool: 1 }, // 特別設置火鍋的 weight 為 1
+                { name: 'bonita', weight: 1, in_pool: 1 },
+                { name: '日式咖哩', weight: 10, in_pool: 1 },
+                { name: '快快井', weight: 10, in_pool: 1 },
+                { name: 'Edwin Eats', weight: 1, in_pool: 1 },
+                { name: '晴光意麵', weight: 10, in_pool: 1 },
+                // { name: '南洋鍋', weight: 0.1, in_pool: 1 },
+            ];
+    
+            const stmt = db.prepare("INSERT INTO restaurants (name, weight, in_pool) VALUES (?, ?, ?)");
+            restaurants.forEach(({ name, weight, in_pool }) => stmt.run(name, weight, in_pool));
             stmt.finalize();
         }
     });
