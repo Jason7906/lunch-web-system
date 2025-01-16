@@ -26,6 +26,7 @@ db.serialize(() => {
             name TEXT, 
             weight INTEGER, 
             in_pool INTEGER DEFAULT 0
+            votes TEXT DEFAULT '{}'
         )`
     );
     db.run(
@@ -34,14 +35,14 @@ db.serialize(() => {
             name TEXT UNIQUE, 
             weight INTEGER
         )`
-    );
+    );    
 
     // 初始化範例餐廳
     db.get("SELECT COUNT(*) AS count FROM restaurants", (err, row) => {
         if (err) throw err;
         if (row.count === 0) {
             const restaurants = [
-                { name: '八方雲集', weight: 10, in_pool: 1 },
+                { name: '八方雲集', weight: 10, in_pool: 1},
                 { name: 'Costco', weight: 10, in_pool: 1 },
                 { name: '麥當勞', weight: 10, in_pool: 1 },
                 { name: '冰店', weight: 10, in_pool: 1 },
@@ -62,7 +63,7 @@ db.serialize(() => {
                 // { name: '南洋鍋', weight: 0.1, in_pool: 1 },
             ];
     
-            const stmt = db.prepare("INSERT INTO restaurants (name, weight, in_pool) VALUES (?, ?, ?)");
+            const stmt = db.prepare("INSERT INTO restaurants (name, weight, in_pool, votes) VALUES (?, ?, ?,?)");
             restaurants.forEach(({ name, weight, in_pool }) => stmt.run(name, weight, in_pool));
             stmt.finalize();
         }
@@ -123,9 +124,9 @@ app.post('/login', (req, res) => {
     if (!isAllowed) {
         return res.status(403).send('您無權登入此系統');
     }
+    const lowerCaseName = name.toLowerCase(); // 將名字轉為小寫
 
-
-    db.get("SELECT * FROM users WHERE name = ?", [name], (err, user) => {
+    db.get("SELECT * FROM users WHERE name = ?", [lowerCaseName], (err, user) => {
         if (err) {
             console.error("資料庫查詢錯誤:", err);
             return res.status(500).send(err.message);
@@ -134,7 +135,7 @@ app.post('/login', (req, res) => {
             res.json(user);
         } else {
             // 新增用戶並初始化權重
-            db.run("INSERT INTO users (name, weight) VALUES (?, 10)", [name], function (err) {
+            db.run("INSERT INTO users (name, weight) VALUES (?, 10)", [lowerCaseName], function (err) {
                 if (err) {
                     console.error("插入用戶失敗:", err);
                     return res.status(500).send(err.message);
@@ -175,10 +176,28 @@ app.post('/vote', (req, res) => {
                 return res.status(400).send('權重不足');
             }
 
-            db.run("UPDATE users SET weight = weight - ? WHERE id = ?", [voteWeight, userId]);
-            db.run("UPDATE restaurants SET weight = weight + ? WHERE id = ?", [voteWeight, restaurantId], (err) => {
+            // 更新用戶的權重
+            db.run("UPDATE users SET weight = weight - ? WHERE id = ?", [voteWeight, userId], (err) => {
                 if (err) return res.status(500).send(err.message);
-                res.send('投票成功');
+
+                // 更新餐廳的總權重
+                db.run("UPDATE restaurants SET weight = weight + ? WHERE id = ?", [voteWeight, restaurantId], (err) => {
+                    if (err) return res.status(500).send(err.message);
+
+                    // 更新餐廳的 votes 欄位
+                    const currentVotes = JSON.parse(restaurant.votes || '{}');
+                    const userKey = `user_${userId}`;
+                    currentVotes[userKey] = (currentVotes[userKey] || 0) + voteWeight;
+
+                    db.run(
+                        "UPDATE restaurants SET votes = ? WHERE id = ?",
+                        [JSON.stringify(currentVotes), restaurantId],
+                        (err) => {
+                            if (err) return res.status(500).send(err.message);
+                            res.send('投票成功');
+                        }
+                    );
+                });
             });
         });
     });

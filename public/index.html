@@ -73,18 +73,26 @@ function initializeColors() {
         }
 
         // 更新 Pool 內清單
-        function updateRestaurantsList() {
+function updateRestaurantsList() {
     const list = document.getElementById('restaurantsList');
-    list.innerHTML = poolRestaurants.map(r => `
-        <div class="restaurant">
-            <span>${r.name}（${r.weight}）</span>
-            <div>
-                <button onclick="adjustVote(${r.id}, -1)" ${remainingWeight <= 0 ? 'disabled' : ''}>-</button>
-                <span>${votes[r.id] || 0}</span>
-                <button onclick="adjustVote(${r.id}, 1)" ${remainingWeight <= 0 ? 'disabled' : ''}>+</button>
+
+    list.innerHTML = poolRestaurants.map(r => {
+        // 如果 votes 存在且非空，組合投票記錄，格式為 "Name: X"
+        const voteDetails = r.votes && r.votes.length > 0
+            ? r.votes.map(v => `${v.name}: ${v.count}`).join(', ')
+            : '尚無投票記錄';
+
+        return `
+            <div class="restaurant">
+                <span>${r.name}（${r.weight}）<small>${voteDetails}</small></span>
+                <div>
+                    <button onclick="adjustVote(${r.id}, -1)" ${votes[r.id] <= 0 ? 'disabled' : ''}>-</button>
+                    <span>${votes[r.id] || 0}</span>
+                    <button onclick="adjustVote(${r.id}, 1)" ${remainingWeight <= 0 ? 'disabled' : ''}>+</button>
+                </div>
             </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
         // 更新所有餐廳清單，支持加入或移出 Pool
