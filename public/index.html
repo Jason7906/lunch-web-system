@@ -95,33 +95,17 @@ function initializeColors() {
     }).join('');
 }
 
-        // 更新所有餐廳清單，支持加入或移出 Pool
-        function updateAllRestaurantsList(restaurants) {
-    // 獲取餐廳列表的 HTML 元素
+       // 更新所有餐廳清單，支持加入或移出 Pool
+       function updateAllRestaurantsList() {
     const list = document.getElementById('allRestaurantsList');
-    if (!list) {
-        console.error('元素 allRestaurantsList 不存在');
-        return;
-    }
-
-    // 渲染餐廳列表
-    list.innerHTML = restaurants.map(r => {
-        // 檢查是否有投票記錄
-        const voteDetails = (r.votes && r.votes.length > 0)
-            ? r.votes.map(v => `${v.name}: ${v.count} 票`).join(', ')
-            : '尚無投票記錄';
-
-        return `
-            <div class="restaurant">
-                <span>${r.name}（${r.weight}）<small>${voteDetails}</small></span>
-                <div>
-                    <button onclick="adjustVote(${r.id}, -1)">-</button>
-                    <span>${votes[r.id] || 0}</span>
-                    <button onclick="adjustVote(${r.id}, 1)">+</button>
-                </div>
-            </div>
-        `;
-    }).join('');
+    list.innerHTML = restaurants.map(r => 
+        <div class="restaurant" onclick="togglePool(${r.id}, ${r.in_pool})">
+            <span>
+                <span class="status-indicator ${r.in_pool ? 'status-in-pool' : 'status-not-in-pool'}"></span>
+                ${r.name}
+            </span>
+        </div>
+    ).join('');
 }
 
 
@@ -141,7 +125,7 @@ function initializeColors() {
 }
 
         // 投票功能
-        function adjustVote(restaurantId, delta) {
+        async function adjustVote(restaurantId, delta) {
     // 更新本地投票數據
     if (!votes[restaurantId]) votes[restaurantId] = 0;
 
@@ -161,6 +145,7 @@ function initializeColors() {
     if (voteSpan) {
         voteSpan.textContent = votes[restaurantId];
     }
+    updateRestaurantsList();
 }
 
         // 提交投票
