@@ -64,7 +64,9 @@ db.serialize(() => {
             ];
     
             const stmt = db.prepare("INSERT INTO restaurants (name, weight, in_pool, votes) VALUES (?, ?, ?,?)");
-            restaurants.forEach(({ name, weight, in_pool }) => stmt.run(name, weight, in_pool));
+            restaurants.forEach(({ name, weight, in_pool }) => {
+                stmt.run(name, weight, in_pool, '{}'); // 初始化 votes 為空 JSON 字符串
+            });
             stmt.finalize();
         }
     });
@@ -108,7 +110,14 @@ app.get('/restaurants', (req, res) => {
 
     db.all(query, params, (err, rows) => {
         if (err) return res.status(500).send(err.message);
-        res.json(rows);
+
+        // 將 votes 欄位解析為 JSON 格式
+        const results = rows.map(row => ({
+            ...row,
+            votes: row.votes ? JSON.parse(row.votes) : {} // 如果 votes 為空，返回空對象
+        }));
+
+        res.json(results);
     });
 });
 

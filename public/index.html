@@ -73,22 +73,23 @@ function initializeColors() {
         }
 
         // 更新 Pool 內清單
-function updateRestaurantsList() {
+        function updateRestaurantsList() {
     const list = document.getElementById('restaurantsList');
 
-    list.innerHTML = poolRestaurants.map(r => {
-        // 如果 votes 存在且非空，組合投票記錄，格式為 "Name: X"
-        const voteDetails = r.votes && r.votes.length > 0
-            ? r.votes.map(v => `${v.name}: ${v.count}`).join(', ')
-            : '尚無投票記錄';
+    list.innerHTML = restaurants.map(r => {
+        // 顯示投票記錄
+        const voteDetails = Object.entries(r.votes || {}).map(([key, value]) => {
+            const userId = key.replace('user_', ''); // 提取使用者 ID
+            return `使用者 ${userId}: ${value} 票`;
+        }).join(', ');
 
         return `
             <div class="restaurant">
-                <span>${r.name}（${r.weight}）<small>${voteDetails}</small></span>
+                <span>${r.name}（總權重: ${r.weight}）<small>${voteDetails || '尚無投票記錄'}</small></span>
                 <div>
-                    <button onclick="adjustVote(${r.id}, -1)" ${votes[r.id] <= 0 ? 'disabled' : ''}>-</button>
+                    <button onclick="adjustVote(${r.id}, -1)">-</button>
                     <span>${votes[r.id] || 0}</span>
-                    <button onclick="adjustVote(${r.id}, 1)" ${remainingWeight <= 0 ? 'disabled' : ''}>+</button>
+                    <button onclick="adjustVote(${r.id}, 1)">+</button>
                 </div>
             </div>
         `;
