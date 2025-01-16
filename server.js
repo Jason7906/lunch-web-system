@@ -297,8 +297,69 @@ app.post('/restaurants/pool', (req, res) => {
         });
     });
 });
+// 多餐廳投票服務
+app.post('/submitVotes', (req, res) => {
+    const { userId, votes } = req.body;
 
+    db.get("SELECT weight FROM users WHERE id = ?", [userId], (err, user) => {
+        if (err) return res.status(500).send(err.message);
 
+        // 檢查用戶權重是否足夠
+        const totalVotes = Object.values(votes).reduce((sum, weight) => sum + weight, 0);
+        if (user.weight < totalVotes) {
+            return res.status(400).send('權重不足');
+        }
+
+        // 使用交易處理多個投票
+        db.run("BEGIN TRANSACTION", (err) => {
+            if (err) return res.status(500).send(err.message);
+
+            const updateQueries = Object.entries(votes).map(([restaurantId, voteWeight]) => {
+                return new Promise((resolve, reject) => {
+                    // 更新餐廳的票數
+                    db.get("SELECT votes FROM restaurants WHERE id = ?", [restaurantId], (err, restaurant) => {
+                        if (err) return reject(err);
+                        if (!restaurant) return reject(new Error('餐廳不存在'));
+
+                        const currentVotes = JSON.parse(restaurant.votes || '{}');
+                        const userKey = `user_${userId}`;
+                        currentVotes[userKey] = (currentVotes[userKey] || 0) + voteWeight;
+
+                        db.run(
+                            "UPDATE restaurants SET weight = weight + ?, votes = ? WHERE id = ?",
+                            [voteWeight, JSON.stringify(currentVotes), restaurantId],
+                            (err) => {
+                                if (err) return reject(err);
+                                resolve();
+                            }
+                        );
+                    });
+                });
+            });
+
+            // 更新用戶的剩餘權重
+            db.run("UPDATE users SET weight = weight - ? WHERE id = ?", [totalVotes, userId], (err) => {
+                if (err) {
+                    db.run("ROLLBACK");
+                    return res.status(500).send(err.message);
+                }
+
+                // 執行所有更新
+                Promise.all(updateQueries)
+                    .then(() => {
+                        db.run("COMMIT", (err) => {
+                            if (err) return res.status(500).send(err.message);
+                            res.send('投票成功');
+                        });
+                    })
+                    .catch(err => {
+                        db.run("ROLLBACK");
+                        res.status(500).send(err.message);
+                    });
+            });
+        });
+    });
+});
 // 啟動伺服器
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
