@@ -97,15 +97,20 @@ function initializeColors() {
 
         // 更新所有餐廳清單，支持加入或移出 Pool
         function updateAllRestaurantsList() {
-    const list = document.getElementById('allRestaurantsList');
-    list.innerHTML = restaurants.map(r => `
-        <div class="restaurant" onclick="togglePool(${r.id}, ${r.in_pool})">
-            <span>
-                <span class="status-indicator ${r.in_pool ? 'status-in-pool' : 'status-not-in-pool'}"></span>
-                ${r.name}
-            </span>
+            list.innerHTML = restaurants.map(r => {
+    const voteDetails = r.votes.map(v => `${v.name}: ${v.count} 票`).join(', ');
+
+    return `
+        <div class="restaurant">
+            <span>${r.name}（${r.weight}）<small>${voteDetails || '尚無投票記錄'}</small></span>
+            <div>
+                <button onclick="adjustVote(${r.id}, -1)">-</button>
+                <span>${votes[r.id] || 0}</span>
+                <button onclick="adjustVote(${r.id}, 1)">+</button>
+            </div>
         </div>
-    `).join('');
+    `;
+}).join('');
 }
 
         // 切換 Pool 狀態
