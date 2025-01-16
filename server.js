@@ -25,8 +25,7 @@ db.serialize(() => {
             id INTEGER PRIMARY KEY, 
             name TEXT, 
             weight INTEGER, 
-            in_pool INTEGER DEFAULT 0,
-            votes TEXT DEFAULT '{}'
+            in_pool INTEGER DEFAULT 0
         )`
     );
     db.run(
@@ -35,14 +34,14 @@ db.serialize(() => {
             name TEXT UNIQUE, 
             weight INTEGER
         )`
-    );    
+    );
 
     // 初始化範例餐廳
     db.get("SELECT COUNT(*) AS count FROM restaurants", (err, row) => {
         if (err) throw err;
         if (row.count === 0) {
             const restaurants = [
-                { name: '八方雲集', weight: 10, in_pool: 1},
+                { name: '八方雲集', weight: 10, in_pool: 1 },
                 { name: 'Costco', weight: 10, in_pool: 1 },
                 { name: '麥當勞', weight: 10, in_pool: 1 },
                 { name: '冰店', weight: 10, in_pool: 1 },
@@ -63,10 +62,8 @@ db.serialize(() => {
                 // { name: '南洋鍋', weight: 0.1, in_pool: 1 },
             ];
     
-            const stmt = db.prepare("INSERT INTO restaurants (name, weight, in_pool, votes) VALUES (?, ?, ?,?)");
-            restaurants.forEach(({ name, weight, in_pool }) => {
-                stmt.run(name, weight, in_pool, '{}'); // 初始化 votes 為空 JSON 字符串
-            });
+            const stmt = db.prepare("INSERT INTO restaurants (name, weight, in_pool) VALUES (?, ?, ?)");
+            restaurants.forEach(({ name, weight, in_pool }) => stmt.run(name, weight, in_pool));
             stmt.finalize();
         }
     });
@@ -99,32 +96,18 @@ app.put('/restaurants/:id/pool', (req, res) => {
 
 // 取得餐廳列表
 app.get('/restaurants', (req, res) => {
-    db.all("SELECT * FROM restaurants", (err, rows) => {
+    const { in_pool } = req.query;
+    let query = "SELECT * FROM restaurants";
+    const params = [];
+
+    if (in_pool !== undefined) {
+        query += " WHERE in_pool = ?";
+        params.push(Number(in_pool));
+    }
+
+    db.all(query, params, (err, rows) => {
         if (err) return res.status(500).send(err.message);
-
-        const results = rows.map(row => {
-            const votes = JSON.parse(row.votes || '{}');
-
-            const voteDetails = Object.entries(votes).map(([userKey, count]) => {
-                const userId = userKey.replace('user_', '');
-                return new Promise((resolve, reject) => {
-                    db.get("SELECT name FROM users WHERE id = ?", [userId], (err, user) => {
-                        if (err) reject(err);
-                        resolve({ name: user ? user.name : `ID ${userId}`, count });
-                    });
-                });
-            });
-
-            return Promise.all(voteDetails).then(votes => ({
-                ...row,
-                votes
-            }));
-        });
-
-        Promise.all(results).then(data => res.json(data)).catch(err => {
-            console.error(err);
-            res.status(500).send('Failed to retrieve restaurant data');
-        });
+        res.json(rows);
     });
 });
 
@@ -140,9 +123,9 @@ app.post('/login', (req, res) => {
     if (!isAllowed) {
         return res.status(403).send('您無權登入此系統');
     }
-    const lowerCaseName = name.toLowerCase(); // 將名字轉為小寫
 
-    db.get("SELECT * FROM users WHERE name = ?", [lowerCaseName], (err, user) => {
+
+    db.get("SELECT * FROM users WHERE name = ?", [name], (err, user) => {
         if (err) {
             console.error("資料庫查詢錯誤:", err);
             return res.status(500).send(err.message);
@@ -151,7 +134,7 @@ app.post('/login', (req, res) => {
             res.json(user);
         } else {
             // 新增用戶並初始化權重
-            db.run("INSERT INTO users (name, weight) VALUES (?, 10)", [lowerCaseName], function (err) {
+            db.run("INSERT INTO users (name, weight) VALUES (?, 10)", [name], function (err) {
                 if (err) {
                     console.error("插入用戶失敗:", err);
                     return res.status(500).send(err.message);
@@ -174,55 +157,28 @@ app.get('/users/:id/weight', (req, res) => {
 app.post('/vote', (req, res) => {
     const { userId, restaurantId, voteWeight } = req.body;
 
-    // 確保用戶權重足夠
     db.get("SELECT weight FROM users WHERE id = ?", [userId], (err, user) => {
         if (err) return res.status(500).send(err.message);
-        if (!user || user.weight < voteWeight) {
-            return res.status(400).send('權重不足或已耗盡');
+
+        // 如果用戶權重為 0，禁止投票
+        if (!user || user.weight <= 0) {
+            return res.status(400).send('權重已耗盡，無法投票');
         }
 
-        // 獲取餐廳數據
-        db.get("SELECT votes, weight FROM restaurants WHERE id = ?", [restaurantId], (err, restaurant) => {
+        db.get("SELECT in_pool FROM restaurants WHERE id = ?", [restaurantId], (err, restaurant) => {
             if (err) return res.status(500).send(err.message);
-            if (!restaurant) {
-                return res.status(404).send('餐廳不存在');
+            if (!restaurant || restaurant.in_pool === 0) {
+                return res.status(400).send('該餐廳未在轉盤池中');
             }
 
-            // 確保 votes 格式正確
-            const currentVotes = JSON.parse(restaurant.votes || '{}');
-            const userKey = `user_${userId}`;
+            if (user.weight < voteWeight) {
+                return res.status(400).send('權重不足');
+            }
 
-            // 累加投票數
-            currentVotes[userKey] = (currentVotes[userKey] || 0) + voteWeight;
-
-            // 使用交易避免競態條件
-            db.run("BEGIN TRANSACTION", (err) => {
+            db.run("UPDATE users SET weight = weight - ? WHERE id = ?", [voteWeight, userId]);
+            db.run("UPDATE restaurants SET weight = weight + ? WHERE id = ?", [voteWeight, restaurantId], (err) => {
                 if (err) return res.status(500).send(err.message);
-
-                // 更新用戶權重
-                db.run("UPDATE users SET weight = weight - ? WHERE id = ?", [voteWeight, userId], (err) => {
-                    if (err) {
-                        db.run("ROLLBACK");
-                        return res.status(500).send(err.message);
-                    }
-
-                    // 更新餐廳權重和投票記錄
-                    db.run(
-                        "UPDATE restaurants SET weight = weight + ?, votes = ? WHERE id = ?",
-                        [voteWeight, JSON.stringify(currentVotes), restaurantId],
-                        (err) => {
-                            if (err) {
-                                db.run("ROLLBACK");
-                                return res.status(500).send(err.message);
-                            }
-
-                            db.run("COMMIT", (err) => {
-                                if (err) return res.status(500).send(err.message);
-                                res.send('投票成功');
-                            });
-                        }
-                    );
-                });
+                res.send('投票成功');
             });
         });
     });
@@ -297,69 +253,8 @@ app.post('/restaurants/pool', (req, res) => {
         });
     });
 });
-// 多餐廳投票服務
-app.post('/submitVotes', (req, res) => {
-    const { userId, votes } = req.body;
 
-    db.get("SELECT weight FROM users WHERE id = ?", [userId], (err, user) => {
-        if (err) return res.status(500).send(err.message);
 
-        // 檢查用戶權重是否足夠
-        const totalVotes = Object.values(votes).reduce((sum, weight) => sum + weight, 0);
-        if (user.weight < totalVotes) {
-            return res.status(400).send('權重不足');
-        }
-
-        // 使用交易處理多個投票
-        db.run("BEGIN TRANSACTION", (err) => {
-            if (err) return res.status(500).send(err.message);
-
-            const updateQueries = Object.entries(votes).map(([restaurantId, voteWeight]) => {
-                return new Promise((resolve, reject) => {
-                    // 更新餐廳的票數
-                    db.get("SELECT votes FROM restaurants WHERE id = ?", [restaurantId], (err, restaurant) => {
-                        if (err) return reject(err);
-                        if (!restaurant) return reject(new Error('餐廳不存在'));
-
-                        const currentVotes = JSON.parse(restaurant.votes || '{}');
-                        const userKey = `user_${userId}`;
-                        currentVotes[userKey] = (currentVotes[userKey] || 0) + voteWeight;
-
-                        db.run(
-                            "UPDATE restaurants SET weight = weight + ?, votes = ? WHERE id = ?",
-                            [voteWeight, JSON.stringify(currentVotes), restaurantId],
-                            (err) => {
-                                if (err) return reject(err);
-                                resolve();
-                            }
-                        );
-                    });
-                });
-            });
-
-            // 更新用戶的剩餘權重
-            db.run("UPDATE users SET weight = weight - ? WHERE id = ?", [totalVotes, userId], (err) => {
-                if (err) {
-                    db.run("ROLLBACK");
-                    return res.status(500).send(err.message);
-                }
-
-                // 執行所有更新
-                Promise.all(updateQueries)
-                    .then(() => {
-                        db.run("COMMIT", (err) => {
-                            if (err) return res.status(500).send(err.message);
-                            res.send('投票成功');
-                        });
-                    })
-                    .catch(err => {
-                        db.run("ROLLBACK");
-                        res.status(500).send(err.message);
-                    });
-            });
-        });
-    });
-});
 // 啟動伺服器
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
