@@ -75,39 +75,30 @@ function initializeColors() {
         // 更新 Pool 內清單
         function updateRestaurantsList() {
     const list = document.getElementById('restaurantsList');
-
-    list.innerHTML = restaurants.map(r => {
-        // 顯示投票記錄
-        const voteDetails = Object.entries(r.votes || {}).map(([name, count]) => {
-        return `${name}: ${count} 票`;
-    }).join(', ');
-
-        return `
-            <div class="restaurant">
-                <span>${r.name}（${r.weight}）<small>${voteDetails || ''}</small></span>
-                <div>
-                    <button onclick="adjustVote(${r.id}, -1)">-</button>
-                    <span>${votes[r.id] || 0}</span>
-                    <button onclick="adjustVote(${r.id}, 1)">+</button>
-                </div>
+    list.innerHTML = poolRestaurants.map(r => `
+        <div class="restaurant">
+            <span>${r.name}（${r.weight}）</span>
+            <div>
+                <button onclick="adjustVote(${r.id}, -1)" ${remainingWeight <= 0 ? 'disabled' : ''}>-</button>
+                <span>${votes[r.id] || 0}</span>
+                <button onclick="adjustVote(${r.id}, 1)" ${remainingWeight <= 0 ? 'disabled' : ''}>+</button>
             </div>
-        `;
-    }).join('');
+        </div>
+    `).join('');
 }
 
-       // 更新所有餐廳清單，支持加入或移出 Pool
-       function updateAllRestaurantsList() {
+        // 更新所有餐廳清單，支持加入或移出 Pool
+        function updateAllRestaurantsList() {
     const list = document.getElementById('allRestaurantsList');
-    list.innerHTML = restaurants.map(r => 
+    list.innerHTML = restaurants.map(r => `
         <div class="restaurant" onclick="togglePool(${r.id}, ${r.in_pool})">
             <span>
                 <span class="status-indicator ${r.in_pool ? 'status-in-pool' : 'status-not-in-pool'}"></span>
                 ${r.name}
             </span>
         </div>
-    ).join('');
+    `).join('');
 }
-
 
         // 切換 Pool 狀態
         async function togglePool(restaurantId, inPool) {
@@ -126,7 +117,6 @@ function initializeColors() {
 
         // 投票功能
         async function adjustVote(restaurantId, delta) {
-    // 更新本地投票數據
     if (!votes[restaurantId]) votes[restaurantId] = 0;
 
     if (delta === -1 && votes[restaurantId] > 0) {
@@ -137,57 +127,30 @@ function initializeColors() {
         remainingWeight -= 1;
     }
 
-    // 更新剩餘權重顯示
     document.getElementById('remainingWeight').textContent = remainingWeight;
 
-    // 更新當前餐廳的投票數量顯示
-    const voteSpan = document.querySelector(`[data-restaurant-id="${restaurantId}"] .vote-count`);
-    if (voteSpan) {
-        voteSpan.textContent = votes[restaurantId];
-    }
+    // 更新後端權重
+    await fetch(`/vote`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, restaurantId, voteWeight: votes[restaurantId] }),
+    });
+
     updateRestaurantsList();
 }
 
         // 提交投票
         async function submitVotes() {
-    try {
-        // 確認本地是否有投票數據
-        const hasVotes = Object.keys(votes).length > 0;
-        if (!hasVotes) {
-            //alert('您尚未投票，無法提交！');
-            return;
-        }
-
-        // 發送投票數據到後端
-        const response = await fetch(`/submitVotes`, {
+    for (const [restaurantId, voteWeight] of Object.entries(votes)) {
+        await fetch('/vote', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId, votes }),
+            body: JSON.stringify({ userId, restaurantId, voteWeight }),
         });
-
-        if (!response.ok) {
-            const error = await response.text();
-            alert(`提交投票失敗: ${error}`);
-            return;
-        }
-
-        // 獲取最新投票數據和用戶權重
-        const { restaurants, remainingWeight: updatedWeight } = await response.json();
-
-        // 更新剩餘權重
-        remainingWeight = updatedWeight;
-        document.getElementById('remainingWeight').textContent = remainingWeight;
-
-        // 更新顯示餐廳數據
-        updateRestaurantsList(restaurants);
-
-        // 清空本地投票數據
-        votes = {};
-        alert('投票提交成功！');
-    } catch (error) {
-        console.error('提交投票錯誤:', error);
-        alert('提交投票過程中發生錯誤，請稍後再試');
     }
+    //alert('投票成功！');
+    votes = {}; // 清空投票數據
+    await fetchRestaurants(); // 獲取最新數據
 }
 
         // 旋轉轉盤
@@ -315,7 +278,7 @@ function finalizeSelection(finalAngle) {
     showSection("main");
     fetchRestaurants();
 }
-const socket = new WebSocket(`wss://${location.host}`);
+const socket = new WebSocket(`ws://${location.host}`);
 let debounceTimer;
 function debounceFetchRestaurants() {
     clearTimeout(debounceTimer);
