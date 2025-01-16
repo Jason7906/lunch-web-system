@@ -25,7 +25,7 @@ db.serialize(() => {
             id INTEGER PRIMARY KEY, 
             name TEXT, 
             weight INTEGER, 
-            in_pool INTEGER DEFAULT 0
+            in_pool INTEGER DEFAULT 0,
             votes TEXT DEFAULT '{}'
         )`
     );
