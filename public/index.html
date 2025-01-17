@@ -89,9 +89,10 @@ function initializeColors() {
             <div class="restaurant-info">
                 <span class="restaurant-name">${r.name}（${r.weight}）</span>
                 <span class="votes">
-                    ${r.votes.length > 0 
-                        ? r.votes.map(v => `${v.name}: ${v.vote_weight}票`).join(' ')
-                        : '尚無投票記錄'
+                    ${r.votes
+                        .filter(v => v.name && v.vote_weight !== null) // 過濾掉 name 或 vote_weight 為 null 的項目
+                        .map(v => `${v.name}: ${v.vote_weight}票`)
+                        .join(' ')
                     }
                 </span>
             </div>

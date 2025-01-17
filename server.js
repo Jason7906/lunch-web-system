@@ -145,7 +145,8 @@ app.get('/restaurants', (req, res) => {
 
         // 將每間餐廳的投票資料轉換為 JSON 格式
         rows.forEach(row => {
-            row.votes = JSON.parse(row.votes);
+            // 過濾掉無效的投票記錄
+            row.votes = JSON.parse(row.votes).filter(v => v.name && v.vote_weight !== null);
         });
 
         res.json(rows);
