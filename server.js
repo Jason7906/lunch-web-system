@@ -154,50 +154,61 @@ app.get('/users/:id/weight', (req, res) => {
     });
 });
 // 投票功能
-app.post('/vote', (req, res) => {
+app.post('/vote', async (req, res) => {
     const votesArray = req.body;
 
     if (!Array.isArray(votesArray)) {
         return res.status(400).send('無效的資料格式');
     }
 
-    db.serialize(() => {
-        db.run('BEGIN TRANSACTION');
+    const dbRunAsync = (sql, params) =>
+        new Promise((resolve, reject) => {
+            db.run(sql, params, (err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+
+    const dbGetAsync = (sql, params) =>
+        new Promise((resolve, reject) => {
+            db.get(sql, params, (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
+        });
+
+    try {
+        // 開始交易
+        await dbRunAsync('BEGIN TRANSACTION');
 
         for (const { userId, restaurantId, voteWeight } of votesArray) {
-            db.get("SELECT weight FROM users WHERE id = ?", [userId], (err, user) => {
-                if (err) {
-                    db.run('ROLLBACK');
-                    return res.status(500).send(err.message);
-                }
+            // 驗證使用者權重
+            const user = await dbGetAsync("SELECT weight FROM users WHERE id = ?", [userId]);
+            if (!user || user.weight <= 0 || user.weight < voteWeight) {
+                throw new Error('權重不足或無效的使用者');
+            }
 
-                if (!user || user.weight <= 0 || user.weight < voteWeight) {
-                    db.run('ROLLBACK');
-                    return res.status(400).send('權重不足或無效的使用者');
-                }
+            // 驗證餐廳是否在轉盤池中
+            const restaurant = await dbGetAsync("SELECT in_pool FROM restaurants WHERE id = ?", [restaurantId]);
+            if (!restaurant || restaurant.in_pool === 0) {
+                throw new Error('該餐廳未在轉盤池中');
+            }
 
-                db.get("SELECT in_pool FROM restaurants WHERE id = ?", [restaurantId], (err, restaurant) => {
-                    if (err) {
-                        db.run('ROLLBACK');
-                        return res.status(500).send(err.message);
-                    }
+            // 更新使用者權重
+            await dbRunAsync("UPDATE users SET weight = weight - ? WHERE id = ?", [voteWeight, userId]);
 
-                    if (!restaurant || restaurant.in_pool === 0) {
-                        db.run('ROLLBACK');
-                        return res.status(400).send('該餐廳未在轉盤池中');
-                    }
-
-                    db.run("UPDATE users SET weight = weight - ? WHERE id = ?", [voteWeight, userId]);
-                    db.run("UPDATE restaurants SET weight = weight + ? WHERE id = ?", [voteWeight, restaurantId]);
-                });
-            });
+            // 更新餐廳權重
+            await dbRunAsync("UPDATE restaurants SET weight = weight + ? WHERE id = ?", [voteWeight, restaurantId]);
         }
 
-        db.run('COMMIT', (err) => {
-            if (err) return res.status(500).send('交易提交失敗');
-            res.send('批量投票成功');
-        });
-    });
+        // 提交交易
+        await dbRunAsync('COMMIT');
+        res.send('批量投票成功');
+    } catch (error) {
+        // 出現錯誤時回滾交易
+        await dbRunAsync('ROLLBACK');
+        res.status(500).send(error.message);
+    }
 });
 // 新增餐廳
 app.post('/restaurants', (req, res) => {

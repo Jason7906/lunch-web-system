@@ -71,6 +71,15 @@ function initializeColors() {
             updateRestaurantsList();
             updateAllRestaurantsList();
         }
+        // 只更新清單
+        async function fetchRestaurantsOnly() {
+            const response = await fetch('/restaurants');
+            restaurants = await response.json();
+            poolRestaurants = restaurants.filter(r => r.in_pool === 1);
+            outsidePoolRestaurants = restaurants.filter(r => r.in_pool === 0);            
+            updateRestaurantsList();
+            updateAllRestaurantsList();
+        }
 
         // 更新 Pool 內清單
         function updateRestaurantsList() {
@@ -300,7 +309,7 @@ socket.addEventListener('message', event => {
 */
 function startAutoUpdate() {
     // 每秒更新畫面
-    updateInterval = setInterval(fetchRestaurants, 1000);
+    updateInterval = setInterval(fetchRestaurantsOnly, 1000);
 }
     </script>
 </body>
