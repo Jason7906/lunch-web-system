@@ -157,8 +157,9 @@ app.post('/login', (req, res) => {
     const { name } = req.body;
     // 限制僅允許指定名稱登入
     const allowedNames = ['Jason','Edwin','Mark','William','Eric','Landy']; // 允許登入的名稱列表
+    const normalizedName = name.toLowerCase(); // 強制轉換為小寫
     const isAllowed = allowedNames.some(
-        allowedName => allowedName.toLowerCase() === name.toLowerCase()
+        allowedName => allowedName.toLowerCase() === normalizedName
     );
 
     if (!isAllowed) {
@@ -166,7 +167,7 @@ app.post('/login', (req, res) => {
     }
 
 
-    db.get("SELECT * FROM users WHERE name = ?", [name], (err, user) => {
+    db.get("SELECT * FROM users WHERE name = ?", [normalizedName], (err, user) => {
         if (err) {
             console.error("資料庫查詢錯誤:", err);
             return res.status(500).send(err.message);
@@ -175,7 +176,7 @@ app.post('/login', (req, res) => {
             res.json(user);
         } else {
             // 新增用戶並初始化權重
-            db.run("INSERT INTO users (name, weight) VALUES (?, 10)", [name], function (err) {
+            db.run("INSERT INTO users (name, weight) VALUES (?, 10)", [normalizedName], function (err) {
                 if (err) {
                     console.error("插入用戶失敗:", err);
                     return res.status(500).send(err.message);
