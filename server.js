@@ -35,6 +35,17 @@ db.serialize(() => {
             weight INTEGER
         )`
     );
+    // 投票紀錄用表
+    db.run(
+        `CREATE TABLE IF NOT EXISTS votes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            restaurant_id INTEGER NOT NULL,
+            vote_weight INTEGER NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (restaurant_id) REFERENCES restaurants(id)
+        )`
+    );
 
     // 初始化範例餐廳
     db.get("SELECT COUNT(*) AS count FROM restaurants", (err, row) => {
@@ -97,16 +108,46 @@ app.put('/restaurants/:id/pool', (req, res) => {
 // 取得餐廳列表
 app.get('/restaurants', (req, res) => {
     const { in_pool } = req.query;
-    let query = "SELECT * FROM restaurants";
+    let query = `
+        SELECT 
+            r.id,
+            r.name,
+            r.weight,
+            r.in_pool,
+            COALESCE(JSON_GROUP_ARRAY(
+                JSON_OBJECT(
+                    'name', u.name,
+                    'vote_weight', v.vote_weight
+                )
+            ), '[]') AS votes
+        FROM 
+            restaurants r
+        LEFT JOIN votes v ON r.id = v.restaurant_id
+        LEFT JOIN users u ON v.user_id = u.id
+    `;
     const params = [];
 
     if (in_pool !== undefined) {
-        query += " WHERE in_pool = ?";
+        if (isNaN(in_pool)) {
+            return res.status(400).send("in_pool 必須是一個數字");
+        }
+        query += " WHERE r.in_pool = ?";
         params.push(Number(in_pool));
     }
 
+    query += " GROUP BY r.id";
+
     db.all(query, params, (err, rows) => {
-        if (err) return res.status(500).send(err.message);
+        if (err) {
+            console.error("取得餐廳列表失敗:", err);
+            return res.status(500).send("伺服器錯誤");
+        }
+
+        // 將每間餐廳的投票資料轉換為 JSON 格式
+        rows.forEach(row => {
+            row.votes = JSON.parse(row.votes);
+        });
+
         res.json(rows);
     });
 });
@@ -199,6 +240,23 @@ app.post('/vote', async (req, res) => {
 
             // 更新餐廳權重
             await dbRunAsync("UPDATE restaurants SET weight = weight + ? WHERE id = ?", [voteWeight, restaurantId]);
+
+            // 插入或更新 votes 表
+            const existingVote = await dbGetAsync(
+                "SELECT id, vote_weight FROM votes WHERE user_id = ? AND restaurant_id = ?",
+                [userId, restaurantId]
+            );
+            if (existingVote) {
+                await dbRunAsync(
+                    "UPDATE votes SET vote_weight = vote_weight + ? WHERE id = ?",
+                    [voteWeight, existingVote.id]
+                );
+            } else {
+                await dbRunAsync(
+                    "INSERT INTO votes (user_id, restaurant_id, vote_weight) VALUES (?, ?, ?)",
+                    [userId, restaurantId, voteWeight]
+                );
+            }
         }
 
         // 提交交易

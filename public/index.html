@@ -81,8 +81,8 @@ function initializeColors() {
             updateAllRestaurantsList();
         }
 
-        // 更新 Pool 內清單
-        function updateRestaurantsList() {
+       // 更新 Pool 內清單
+function updateRestaurantsList() {
     const list = document.getElementById('restaurantsList');
     list.innerHTML = poolRestaurants.map(r => `
         <div class="restaurant">
@@ -91,6 +91,12 @@ function initializeColors() {
                 <button onclick="adjustVote(${r.id}, -1)" ${remainingWeight <= 0 ? 'disabled' : ''}>-</button>
                 <span>${votes[r.id] || 0}</span>
                 <button onclick="adjustVote(${r.id}, 1)" ${remainingWeight <= 0 ? 'disabled' : ''}>+</button>
+            </div>
+            <div class="votes">
+                ${r.votes.length > 0 
+                    ? r.votes.map(v => `<div>${v.name}: ${v.vote_weight} 票</div>`).join('') 
+                    : '<div>尚無投票記錄</div>'
+                }
             </div>
         </div>
     `).join('');
