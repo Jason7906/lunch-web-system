@@ -155,31 +155,47 @@ app.get('/users/:id/weight', (req, res) => {
 });
 // 投票功能
 app.post('/vote', (req, res) => {
-    const { userId, restaurantId, voteWeight } = req.body;
+    const votesArray = req.body;
 
-    db.get("SELECT weight FROM users WHERE id = ?", [userId], (err, user) => {
-        if (err) return res.status(500).send(err.message);
+    if (!Array.isArray(votesArray)) {
+        return res.status(400).send('無效的資料格式');
+    }
 
-        // 如果用戶權重為 0，禁止投票
-        if (!user || user.weight <= 0) {
-            return res.status(400).send('權重已耗盡，無法投票');
+    db.serialize(() => {
+        db.run('BEGIN TRANSACTION');
+
+        for (const { userId, restaurantId, voteWeight } of votesArray) {
+            db.get("SELECT weight FROM users WHERE id = ?", [userId], (err, user) => {
+                if (err) {
+                    db.run('ROLLBACK');
+                    return res.status(500).send(err.message);
+                }
+
+                if (!user || user.weight <= 0 || user.weight < voteWeight) {
+                    db.run('ROLLBACK');
+                    return res.status(400).send('權重不足或無效的使用者');
+                }
+
+                db.get("SELECT in_pool FROM restaurants WHERE id = ?", [restaurantId], (err, restaurant) => {
+                    if (err) {
+                        db.run('ROLLBACK');
+                        return res.status(500).send(err.message);
+                    }
+
+                    if (!restaurant || restaurant.in_pool === 0) {
+                        db.run('ROLLBACK');
+                        return res.status(400).send('該餐廳未在轉盤池中');
+                    }
+
+                    db.run("UPDATE users SET weight = weight - ? WHERE id = ?", [voteWeight, userId]);
+                    db.run("UPDATE restaurants SET weight = weight + ? WHERE id = ?", [voteWeight, restaurantId]);
+                });
+            });
         }
 
-        db.get("SELECT in_pool FROM restaurants WHERE id = ?", [restaurantId], (err, restaurant) => {
-            if (err) return res.status(500).send(err.message);
-            if (!restaurant || restaurant.in_pool === 0) {
-                return res.status(400).send('該餐廳未在轉盤池中');
-            }
-
-            if (user.weight < voteWeight) {
-                return res.status(400).send('權重不足');
-            }
-
-            db.run("UPDATE users SET weight = weight - ? WHERE id = ?", [voteWeight, userId]);
-            db.run("UPDATE restaurants SET weight = weight + ? WHERE id = ?", [voteWeight, restaurantId], (err) => {
-                if (err) return res.status(500).send(err.message);
-                res.send('投票成功');
-            });
+        db.run('COMMIT', (err) => {
+            if (err) return res.status(500).send('交易提交失敗');
+            res.send('批量投票成功');
         });
     });
 });

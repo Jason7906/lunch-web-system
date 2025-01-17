@@ -129,28 +129,31 @@ function initializeColors() {
 
     document.getElementById('remainingWeight').textContent = remainingWeight;
 
-    // 更新後端權重
-    await fetch(`/vote`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, restaurantId, voteWeight: votes[restaurantId] }),
-    });
-
-    updateRestaurantsList();
+    updateRestaurantsList(); // 僅更新前端列表
 }
 
         // 提交投票
         async function submitVotes() {
-    for (const [restaurantId, voteWeight] of Object.entries(votes)) {
-        await fetch('/vote', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId, restaurantId, voteWeight }),
-        });
+    const votesArray = Object.entries(votes).map(([restaurantId, voteWeight]) => ({
+        userId,
+        restaurantId,
+        voteWeight,
+    }));
+
+    const response = await fetch('/vote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(votesArray),
+    });
+
+    if (response.ok) {
+        alert('投票提交成功');
+        // 重新整理頁面或更新狀態
+    } else {
+        const error = await response.text();
+        alert(`提交失敗: ${error}`);
     }
-    //alert('投票成功！');
-    votes = {}; // 清空投票數據
-    await fetchRestaurants(); // 獲取最新數據
+    await fetchRestaurants();
 }
 
         // 旋轉轉盤
@@ -278,7 +281,7 @@ function finalizeSelection(finalAngle) {
     showSection("main");
     fetchRestaurants();
 }
-const socket = new WebSocket(`ws://${location.host}`);
+const socket = new WebSocket(`wss://${location.host}`);
 let debounceTimer;
 function debounceFetchRestaurants() {
     clearTimeout(debounceTimer);
