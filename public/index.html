@@ -149,6 +149,8 @@ function initializeColors() {
     if (response.ok) {
         alert('投票提交成功');
         // 重新整理頁面或更新狀態
+        // 清空 votes 並重置前端顯示
+        votes = {};
     } else {
         const error = await response.text();
         alert(`提交失敗: ${error}`);
@@ -280,7 +282,9 @@ function finalizeSelection(finalAngle) {
     document.getElementById('remainingWeight').textContent = remainingWeight;
     showSection("main");
     fetchRestaurants();
+    startAutoUpdate();
 }
+/*
 const socket = new WebSocket(`wss://${location.host}`);
 let debounceTimer;
 function debounceFetchRestaurants() {
@@ -293,7 +297,11 @@ socket.addEventListener('message', event => {
         fetchRestaurants(); // 刷新餐廳列表和轉盤
     }
 });
-
+*/
+function startAutoUpdate() {
+    // 每秒更新畫面
+    updateInterval = setInterval(fetchRestaurants, 1000);
+}
     </script>
 </body>
 </html>
